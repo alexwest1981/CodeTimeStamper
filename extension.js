@@ -4,7 +4,15 @@ const vscode = require('vscode');
 const path = require('path');
 const fs = require('fs');
 const { Tracker, dataDir, dayKey, TICK_MS } = require('./tracker');
-const { markdown, weekMarkdown, readDay, listDays, fmt } = require('./report');
+const {
+  markdown,
+  weekMarkdown,
+  monthMarkdown,
+  yearMarkdown,
+  readDay,
+  listDays,
+  fmt,
+} = require('./report');
 
 const IDE = vscode.env.appName || 'VS Code';
 
@@ -15,6 +23,15 @@ let timer;
 function cfg() {
   const c = vscode.workspace.getConfiguration('codetimestamper');
   return { idleMs: Math.max(1, c.get('idleMinutes', 10)) * 60000, enabled: c.get('enabled', true) };
+}
+
+// Projektmappens namn — basename, aldrig sökvägen. Tomt när inställningen är
+// av eller när fönstret inte har någon mapp (t.ex. en ensam fil).
+function projectName() {
+  const c = vscode.workspace.getConfiguration('codetimestamper');
+  if (!c.get('recordProject', true)) return '';
+  const folders = vscode.workspace.workspaceFolders;
+  return folders && folders.length ? folders[0].name : '';
 }
 
 // Skriv dagens rapport till rapport/ om den saknas. Gör att en dag får sin
@@ -61,7 +78,7 @@ async function showDoc(title, content) {
 
 function activate(context) {
   const conf = cfg();
-  tracker = new Tracker(IDE, conf.idleMs);
+  tracker = new Tracker(IDE, conf.idleMs, projectName());
 
   status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   status.command = 'codetimestamper.show';
@@ -96,6 +113,9 @@ function activate(context) {
   timer = setInterval(() => {
     const c = cfg();
     tracker.idleMs = c.idleMs;
+    // Läses om varje tick: ett annat projekt kan ha öppnats i samma fönster,
+    // och recordProject kan ha slagits av, utan att extensionen startas om.
+    tracker.project = projectName();
     const wasOpen = tracker.openAt !== null;
     if (c.enabled) tracker.tick();
     if (wasOpen && tracker.openAt === null) writeTodayReport();
@@ -111,11 +131,15 @@ function activate(context) {
           { label: 'Idag', value: 'today' },
           { label: 'Igår', value: 'yesterday' },
           { label: 'Senaste 7 dagarna', value: 'week' },
+          { label: 'Denna månad', value: 'month' },
+          { label: 'I år', value: 'year' },
         ],
         { placeHolder: 'Vilken rapport?' }
       );
       if (!pick) return;
       if (pick.value === 'week') return showDoc('CodeTimeStamper', weekMarkdown());
+      if (pick.value === 'month') return showDoc('CodeTimeStamper', monthMarkdown());
+      if (pick.value === 'year') return showDoc('CodeTimeStamper', yearMarkdown());
       const day = dayKey(Date.now() - (pick.value === 'yesterday' ? 86400000 : 0));
       return showDoc('CodeTimeStamper', markdown([day]));
     })

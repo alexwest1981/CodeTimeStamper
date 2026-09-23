@@ -100,6 +100,7 @@ public final class Statusbar implements StatusBarWidgetFactory {
         @Override
         public void install(@NotNull StatusBar statusBar) {
             this.bar = statusBar;
+            Stamper.projectOpened(project == null ? "" : project.getName());
             Stamper.watch(this);
             // Enda beviset för att räknaren verkligen monterades: en statusrad
             // finns bara i ett riktigt fönster, alltså kan raden inte skrivas i

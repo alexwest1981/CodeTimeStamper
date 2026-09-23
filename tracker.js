@@ -48,9 +48,12 @@ function append(line) {
 }
 
 class Tracker {
-  constructor(ide, idleMs = IDLE_MS) {
+  // project = projektmappens namn (basename, aldrig sökvägen). Tomt om
+  // inställningen är av eller om fönstret inte har någon mapp.
+  constructor(ide, idleMs = IDLE_MS, project = '') {
     this.ide = ide;
     this.idleMs = idleMs;
+    this.project = project;
     this.openAt = null;
     this.lastActivity = 0;
   }
@@ -59,7 +62,9 @@ class Tracker {
   touch(now = Date.now()) {
     if (this.openAt === null) {
       this.openAt = now;
-      append({ ide: this.ide, t: 'open', ts: now });
+      const line = { ide: this.ide, t: 'open', ts: now };
+      if (this.project) line.w = this.project;
+      append(line);
     }
     this.lastActivity = now;
   }
@@ -87,7 +92,9 @@ class Tracker {
     if (this.openAt === null) return;
     if (end > this.openAt) {
       for (const part of splitDays(this.openAt, end)) {
-        append({ ide: this.ide, t: 'seg', start: part.start, end: part.end });
+        const line = { ide: this.ide, t: 'seg', start: part.start, end: part.end };
+        if (this.project) line.w = this.project;
+        append(line);
       }
     }
     this.openAt = null;

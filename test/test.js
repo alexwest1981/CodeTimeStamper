@@ -9,7 +9,7 @@ const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'cts-'));
 process.env.CODETIMESTAMPER_DIR = TMP;
 
 const { Tracker, splitDays, dayKey, TICK_MS } = require('../tracker');
-const { readDay, markdown, weekMarkdown } = require('../report');
+const { readDay, markdown, weekMarkdown, monthMarkdown, yearMarkdown } = require('../report');
 
 const MIN = 60000;
 let n = 0;
@@ -151,6 +151,41 @@ const ok = (name) => console.log(`  ok  ${++n}. ${name}`);
   assert.strictEqual(markdown(['2026-09-21']).trim(), expected.trim());
   process.env.CODETIMESTAMPER_DIR = keep;
   ok('delad fixtur: samma logg ger samma rapport i båda språken');
+}
+
+// 10. projektet följer med körningen och listas i rapporten
+{
+  const t = new Tracker('VS Code', 10 * MIN, 'Momento');
+  const t0 = new Date(2026, 7, 3, 9, 0).getTime();
+  t.touch(t0);
+  t.close(t0 + 25 * MIN);
+  const u = new Tracker('VS Code', 10 * MIN, 'hellcrawlers');
+  u.touch(t0 + 30 * MIN);
+  u.close(t0 + 45 * MIN);
+  const r = readDay('2026-08-03');
+  assert.strictEqual(r.byProject.Momento, 25 * MIN, 'en rad per projekt');
+  assert.strictEqual(r.byProject.hellcrawlers, 15 * MIN);
+  assert.strictEqual(r.sessions[0].project, 'Momento', 'passet bär sitt projekt');
+  const md = markdown(['2026-08-03']);
+  assert.ok(md.includes('| Start | Slut | Längd | Editor | Projekt |'), 'kolumnrubriken');
+  assert.ok(md.includes('| 09:00 | 09:25 | 25 min | VS Code | Momento |'));
+  ok('projektet följer med körningen och listas per pass');
+}
+
+// 11. månaden och året summerar dagarna, per projekt och per månad
+{
+  const md = monthMarkdown('2026-08');
+  assert.ok(md.includes('# CodeTimeStamper — augusti 2026'), 'månadens namn i rubriken');
+  assert.ok(md.includes('**Total: 40 min**'), 'månadssumman');
+  assert.ok(md.includes('| Momento | 25 min |'), 'projekt i månadsrapporten');
+  assert.ok(md.includes('| 2026-08-03 | 40 min |'), 'dagsraden');
+  const ar = yearMarkdown('2026');
+  assert.ok(ar.includes('# CodeTimeStamper — 2026'));
+  assert.ok(ar.includes('| Månad | Tid |'), 'året radas per månad');
+  assert.ok(ar.includes('| 2026-08 | 40 min |'));
+  assert.ok(ar.includes('| 2026-09 |'), 'september finns med från de andra proven');
+  assert.ok(!/\| 2026-0[1-7] \|/.test(ar), 'månader utan tid listas inte');
+  ok('månads- och årsrapport summerar dagarna');
 }
 
 fs.rmSync(TMP, { recursive: true, force: true });

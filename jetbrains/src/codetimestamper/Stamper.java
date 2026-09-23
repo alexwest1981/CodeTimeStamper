@@ -68,6 +68,20 @@ public final class Stamper extends ApplicationInitializedListenerJavaShim implem
         WIDGETS.remove(w);
     }
 
+    /**
+     * Projektfönstrets namn in i trackern. Kallas när statusraden monteras, för
+     * det är där ett projektfönster finns — ingen egen extension point behövs.
+     * ponytail: hakar på widgeten i stället för ProjectManagerListener; byt om
+     * namnet måste stämma även när räknaren är avstängd i statusraden.
+     */
+    static void projectOpened(String name) {
+        Stamper s = instance;
+        if (s == null) {
+            return;
+        }
+        s.tracker.setProject(Settings.getInstance().getState().recordProject ? name : "");
+    }
+
     @Override
     public void componentsInitialized() {
         ApplicationManager.getApplication().invokeLater(() -> {

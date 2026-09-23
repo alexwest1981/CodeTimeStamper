@@ -4,6 +4,11 @@ const fs = require('fs');
 const path = require('path');
 const { dataDir, dayKey, TICK_MS } = require('./tracker');
 
+const MÅNADER = [
+  'januari', 'februari', 'mars', 'april', 'maj', 'juni',
+  'juli', 'augusti', 'september', 'oktober', 'november', 'december',
+];
+
 function listDays(dir = dataDir()) {
   let names = [];
   try {
@@ -29,6 +34,7 @@ function readDay(day, dir = dataDir()) {
     day,
     totalMs: 0,
     byIde: {},
+    byProject: {},
     sessions: [],
     orphans: [],
     badLines: 0,
@@ -50,7 +56,7 @@ function readDay(day, dir = dataDir()) {
     const key = `${start}|${ide}`;
     let x = runs.get(key);
     if (!x) {
-      x = { ide, start, end: null, lastBeat: 0 };
+      x = { ide, start, end: null, lastBeat: 0, project: '' };
       runs.set(key, x);
     }
     return x;
@@ -66,9 +72,12 @@ function readDay(day, dir = dataDir()) {
       continue;
     }
     if (l.t === 'open') {
-      run(l.ts, l.ide);
+      const x = run(l.ts, l.ide);
+      if (l.w) x.project = l.w;
     } else if (l.t === 'seg' && l.end > l.start) {
-      run(l.start, l.ide).end = l.end;
+      const x = run(l.start, l.ide);
+      x.end = l.end;
+      if (l.w) x.project = l.w;
     } else if (l.t === 'beat') {
       const x = run(l.start, l.ide);
       if (l.ts > x.lastBeat) x.lastBeat = l.ts;
@@ -93,7 +102,8 @@ function readDay(day, dir = dataDir()) {
     const ms = end - x.start;
     r.totalMs += ms;
     r.byIde[x.ide] = (r.byIde[x.ide] || 0) + ms;
-    r.sessions.push({ ide: x.ide, start: x.start, end, ms });
+    if (x.project) r.byProject[x.project] = (r.byProject[x.project] || 0) + ms;
+    r.sessions.push({ ide: x.ide, start: x.start, end, ms, project: x.project });
   }
   r.sessions.sort((a, b) => a.start - b.start);
   return r;
@@ -128,10 +138,12 @@ function markdown(days) {
       parts.push('_Ingen aktivitet registrerad._\n');
     }
     if (r.sessions.length) {
-      parts.push('| Start | Slut | Längd | Editor |');
-      parts.push('| --- | --- | --- | --- |');
+      parts.push('| Start | Slut | Längd | Editor | Projekt |');
+      parts.push('| --- | --- | --- | --- | --- |');
       for (const s of r.sessions) {
-        parts.push(`| ${hm(s.start)} | ${hm(s.end)} | ${fmt(s.ms)} | ${s.ide} |`);
+        parts.push(
+          `| ${hm(s.start)} | ${hm(s.end)} | ${fmt(s.ms)} | ${s.ide} | ${s.project || '(okänt)'} |`
+        );
       }
       parts.push('');
     }
@@ -144,19 +156,93 @@ function markdown(days) {
   return parts.join('\n');
 }
 
-function weekMarkdown(endDay = dayKey(Date.now())) {
-  const days = listDays();
-  const end = new Date(endDay + 'T12:00:00').getTime();
-  const span = [];
-  for (let i = 6; i >= 0; i--) span.push(dayKey(end - i * 86400000));
-  const rows = span.map((d) => ({ d, r: readDay(d) }));
-  const total = rows.reduce((a, x) => a + x.r.totalMs, 0);
-  const out = [`# CodeTimeStamper — 7 dagar till ${endDay}\n`, `**Total: ${fmt(total)}**\n`];
-  out.push('| Dag | Tid |');
-  out.push('| --- | --- |');
-  for (const { d, r } of rows) out.push(`| ${d} | ${fmt(r.totalMs)} |`);
-  out.push('', `Sparade dagar i loggen: ${days.length}.`);
+// Aggregat över flera dagar. En dag i taget: loggen är append-only, så en dags
+// fil är liten nog att läsa rakt av. Ett år är ~365 filer, vilket är sekunder —
+// och bara när någon faktiskt ber om årsrapporten.
+function totals(days) {
+  const byIde = {};
+  const byProject = {};
+  const perDay = {};
+  let totalMs = 0;
+  for (const day of days) {
+    const r = readDay(day);
+    totalMs += r.totalMs;
+    perDay[day] = r.totalMs;
+    for (const [k, v] of Object.entries(r.byIde)) byIde[k] = (byIde[k] || 0) + v;
+    for (const [k, v] of Object.entries(r.byProject)) byProject[k] = (byProject[k] || 0) + v;
+  }
+  return { totalMs, byIde, byProject, perDay };
+}
+
+function table(head, unit, map, kronologisk = false) {
+  const keys = Object.keys(map).filter((k) => map[k] > 0);
+  if (!keys.length) return [];
+  keys.sort(kronologisk ? undefined : (a, b) => map[b] - map[a]);
+  const out = [`| ${head} | ${unit} |`, '| --- | --- |'];
+  for (const k of keys) out.push(`| ${k} | ${fmt(map[k])} |`);
+  out.push('');
+  return out;
+}
+
+function dagarMellan(from, to) {
+  const out = [];
+  for (let t = new Date(from + 'T12:00:00').getTime(); dayKey(t) <= to; t += 86400000) {
+    out.push(dayKey(t));
+  }
+  return out;
+}
+
+function monthDays(month) {
+  const [y, m] = month.split('-').map(Number);
+  const sista = new Date(y, m, 0).getDate();
+  return dagarMellan(`${month}-01`, `${month}-${String(sista).padStart(2, '0')}`);
+}
+
+function yearDays(year) {
+  return dagarMellan(`${year}-01-01`, `${year}-12-31`);
+}
+
+function summering(titel, days, radEnhet) {
+  const t = totals(days);
+  const aktiva = Object.values(t.perDay).filter((v) => v > 0).length;
+  const out = [
+    `# CodeTimeStamper — ${titel}\n`,
+    `**Total: ${fmt(t.totalMs)}** över ${aktiva} ${aktiva === 1 ? 'dag' : 'dagar'} med tid\n`,
+  ];
+  out.push(...table('Editor', 'Tid', t.byIde));
+  out.push(...table('Projekt', 'Tid', t.byProject));
+  const rader = {};
+  for (const [day, ms] of Object.entries(t.perDay)) {
+    const k = radEnhet === 'manad' ? day.slice(0, 7) : day;
+    rader[k] = (rader[k] || 0) + ms;
+  }
+  out.push(...table(radEnhet === 'manad' ? 'Månad' : 'Dag', 'Tid', rader, true));
   return out.join('\n');
 }
 
-module.exports = { readDay, listDays, markdown, weekMarkdown, fmt };
+function weekMarkdown(endDay = dayKey(Date.now())) {
+  const end = new Date(endDay + 'T12:00:00').getTime();
+  const days = [];
+  for (let i = 6; i >= 0; i--) days.push(dayKey(end - i * 86400000));
+  return summering(`7 dagar till ${endDay}`, days, 'dag');
+}
+
+function monthMarkdown(month = dayKey(Date.now()).slice(0, 7)) {
+  const namn = MÅNADER[Number(month.slice(5, 7)) - 1] || month;
+  return summering(`${namn} ${month.slice(0, 4)}`, monthDays(month), 'dag');
+}
+
+function yearMarkdown(year = dayKey(Date.now()).slice(0, 4)) {
+  return summering(year, yearDays(year), 'manad');
+}
+
+module.exports = {
+  readDay,
+  listDays,
+  markdown,
+  weekMarkdown,
+  monthMarkdown,
+  yearMarkdown,
+  totals,
+  fmt,
+};

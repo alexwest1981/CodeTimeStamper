@@ -74,6 +74,23 @@ public final class TrackerTest {
             t4.close(t0 + min);
             check(read(dir, "2026-09-22.jsonl").contains("\\\"quoted\\\""), "citattecken escapas i JSON");
 
+            // 7. projektmappens namn följer med, och bara när det är satt
+            check(!day1.contains("\"w\":"), "inget projekt sparades när inget sattes");
+            Tracker t5 = new Tracker("VS Code", 10 * min, dir);
+            t5.setProject("Systemarkitektur");
+            t5.touch(t0);
+            t5.close(t0 + min);
+            String day1d = read(dir, "2026-09-22.jsonl");
+            check(day1d.contains("\"t\":\"open\",\"ts\":" + t0 + ",\"w\":\"Systemarkitektur\"}"),
+                    "projektet står på öppningsraden");
+            check(day1d.contains("\"t\":\"seg\",\"start\":" + t0 + ",\"end\":" + (t0 + min)
+                    + ",\"w\":\"Systemarkitektur\"}"), "och på stängningsraden");
+            t5.setProject(null);
+            t5.touch(t0 + 3 * min);
+            t5.close(t0 + 4 * min);
+            check(!read(dir, "2026-09-22.jsonl").substring(day1d.length()).contains("\"w\":"),
+                    "avstängt projektnamn skriver inget fält");
+
             System.out.println("\n" + n + " prov i JetBrains-logiken, alla gröna.");
         } finally {
             delete(dir);

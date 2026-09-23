@@ -6,6 +6,10 @@ daily total covers IntelliJ, VS Code, Antigravity, Cursor and the rest in one
 number — rendered by the extension, the CLI (`codetimestamper`) or the
 automatically written daily report.
 
+Stored: timestamps, the IDE's name and the **project folder's name** (basename
+only, never the path). `recordProject` in `codetimestamper.xml` turns the project
+name off. Nothing else — no file names, no keystrokes, no network.
+
 ## Install
 
 **You do not need to build anything.** Download `codetimestamper-jetbrains.zip`
@@ -46,7 +50,7 @@ JetBrains IDE, not just IDEA.
 Not sure it loaded? *Help → Show Log in Files*, and look for:
 
 ```
-INFO - AppStarter - Loaded custom plugins: CodeTimeStamper (0.1.2)
+INFO - AppStarter - Loaded custom plugins: CodeTimeStamper (0.1.3)
 INFO - CodeTimeStamper - aktiv i IntelliJ IDEA, skriver till /home/you/.codetimestamper
 INFO - CodeTimeStamper - räknaren monterad i statusraden: "Kodtid 1 h 45 min"
 ```
@@ -93,7 +97,7 @@ with `-Djava.awt.headless=true` — measured, the plugin is up 4–6 s after lau
 with no `DISPLAY` at all. Expected:
 
 ```
-INFO - AppStarter - Loaded custom plugins: CodeTimeStamper (0.1.2)
+INFO - AppStarter - Loaded custom plugins: CodeTimeStamper (0.1.3)
 INFO - CodeTimeStamper - aktiv i IntelliJ IDEA, skriver till /tmp/cts-jb-verify/data
 ```
 
@@ -125,8 +129,9 @@ the headless proof plus this log line from a normal session.
 | `IdeEventQueue.addActivityListener` | Real user input — keys and mouse. Not deprecated. **`addIdleListener` is** (`Use IdleTracker and coroutines`), so the idle threshold is the same explicit state machine the VS Code side uses, and the two editors cannot disagree about what "active" means. |
 | `statusBarWidgetFactory` | The counter in the status bar. `createWidget(Project)` **must** be implemented: the interface's own default throws `AbstractMethodError` (read out of the bytecode with `javap`), while the coroutine variant delegates to it, so one implementation covers both. `isEnabledByDefault()` already returns `true`, which is why the widget appears without anyone enabling it. |
 | JVM shutdown hook | Closes the open session on exit. `AppLifecycleListener.appClosing()` exists, but no extension point for it is declared in this build (searched, not assumed), and a shutdown hook is stdlib. A `kill -9` is caught by the heartbeat instead: the session is counted up to its last `beat` line, at most 30 s short. |
-| `applicationService` + `@State` | `idleMinutes` and `enabled`, stored in `codetimestamper.xml` in the IDE config dir. No settings UI. |
-| `Rapport.java` | The daily markdown, written at startup for finished days and again whenever a session ends. A second implementation of `report.js`'s format, held in place by the shared fixture below. |
+| `applicationService` + `@State` | `idleMinutes`, `enabled` and `recordProject`, stored in `codetimestamper.xml` in the IDE config dir. No settings UI. |
+| `Rapport.java` | The daily markdown, written at startup for finished days and again whenever a session ends. A second implementation of `report.js`'s format — including the per-session project column — held in place by the shared fixture below. |
+| Project name | `Project.getName()` (the folder's basename) reaches `Tracker.setProject` from the status bar widget's `install()`, which is where a project window exists. The tracker is application-wide, so it carries one name at a time: with several IDE windows open, the last window's project wins. |
 
 ## Tests
 

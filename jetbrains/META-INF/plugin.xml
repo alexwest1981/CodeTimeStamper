@@ -8,10 +8,13 @@
     Aktiv kodtid per dag, uppmätt i IDE:n. Timern startar när IDE:n öppnas, pausar
     efter 10 minuter utan aktivitet och fortsätter vid nästa tangenttryck.
     <br/><br/>
-    Bara tidsstämplar och IDE:ns namn skrivs, till <code>~/.codetimestamper/</code>:
-    ingen arbetsyta, inga filnamn, inga tangenttryck, ingen nätverkstrafik.
+    Bara tidsstämplar, IDE:ns namn och projektmappens namn (bara namnet, aldrig
+    sökvägen) skrivs, till <code>~/.codetimestamper/</code>: ingen arbetsyta i
+    övrigt, inga filnamn, inga tangenttryck, ingen nätverkstrafik.
+    <code>recordProject</code> stänger av projektnamnet i
+    <code>codetimestamper.xml</code>.
     Samma fil som CodeTimeStamper för VS Code-familjen, så dagssumman blir totalen
-    över alla editorer, uppdelad per editor.
+    över alla editorer, uppdelad per editor och per projekt.
     <br/><br/>
     Räknaren står i statusraden längst ner ("Kodtid 1 h 20 min") och uppdateras
     var 30:e sekund; klick öppnar dagens rapport. Ingen inställning behöver slås

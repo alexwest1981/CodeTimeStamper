@@ -35,11 +35,23 @@ public final class Tracker {
     private long idleMs;
     private Long openAt = null;
     private long lastActivity = 0;
+    /** Projektmappens namn (basename, aldrig sökvägen). Tomt = sparas inte. */
+    private volatile String project = "";
 
     public Tracker(String ide, long idleMs, Path dir) {
         this.ide = ide;
         this.idleMs = idleMs;
         this.dir = dir;
+    }
+
+    /**
+     * Sätts när ett projektfönster öppnas. Plattformens tracker är app-vid, så
+     * den bär ett namn i taget — med flera IDE-fönster öppna blir det sista
+     * fönstrets projekt. ponytail: app-vid tracker, en tracker per fönster om
+     * namnet måste vara exakt rätt i varje.
+     */
+    public void setProject(String name) {
+        this.project = name == null ? "" : name;
     }
 
     public static Path dataDir() {
@@ -73,9 +85,15 @@ public final class Tracker {
     public synchronized void touch(long now) {
         if (openAt == null) {
             openAt = now;
-            append(now, "{\"ide\":" + json(ide) + ",\"t\":\"open\",\"ts\":" + now + "}");
+            append(now, "{\"ide\":" + json(ide) + ",\"t\":\"open\",\"ts\":" + now + wField() + "}");
         }
         lastActivity = now;
+    }
+
+    /** Projektfältet, eller tomt när inget projekt ska sparas. */
+    private String wField() {
+        String p = project;
+        return p == null || p.isEmpty() ? "" : ",\"w\":" + json(p);
     }
 
     /**
@@ -108,7 +126,7 @@ public final class Tracker {
         if (end > openAt) {
             for (long[] part : splitDays(openAt, end)) {
                 append(part[0], "{\"ide\":" + json(ide) + ",\"t\":\"seg\",\"start\":" + part[0]
-                        + ",\"end\":" + part[1] + "}");
+                        + ",\"end\":" + part[1] + wField() + "}");
             }
         }
         openAt = null;

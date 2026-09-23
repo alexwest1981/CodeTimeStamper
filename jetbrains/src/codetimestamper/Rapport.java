@@ -33,6 +33,7 @@ public final class Rapport {
         public final String ide;
         public final long start;
         public long end = -1;
+        public String project = "";
         long lastBeat = 0;
 
         Run(String ide, long start) {
@@ -44,6 +45,7 @@ public final class Rapport {
     public static final class Dag {
         public long totalMs;
         public final Map<String, Long> byIde = new LinkedHashMap<>();
+        public final Map<String, Long> byProject = new LinkedHashMap<>();
         public final List<Run> sessions = new ArrayList<>();
         public final List<Run> orphans = new ArrayList<>();
         public int badLines;
@@ -75,13 +77,21 @@ public final class Rapport {
             }
             String t = field(line, "t");
             String ide = field(line, "ide");
+            String w = field(line, "w");
             if ("open".equals(t)) {
-                run(runs, num(line, "ts"), ide);
+                Run x = run(runs, num(line, "ts"), ide);
+                if (w != null) {
+                    x.project = w;
+                }
             } else if ("seg".equals(t)) {
                 long s = num(line, "start");
                 long e = num(line, "end");
                 if (e > s) {
-                    run(runs, s, ide).end = e;
+                    Run x = run(runs, s, ide);
+                    x.end = e;
+                    if (w != null) {
+                        x.project = w;
+                    }
                 }
             } else if ("beat".equals(t)) {
                 Run x = run(runs, num(line, "start"), ide);
@@ -108,6 +118,9 @@ public final class Rapport {
             long ms = end - x.start;
             r.totalMs += ms;
             r.byIde.merge(x.ide, ms, Long::sum);
+            if (!x.project.isEmpty()) {
+                r.byProject.merge(x.project, ms, Long::sum);
+            }
             r.sessions.add(x);
         }
         r.sessions.sort(Comparator.comparingLong(s -> s.start));
@@ -132,10 +145,11 @@ public final class Rapport {
             p.add("_Ingen aktivitet registrerad._\n");
         }
         if (!r.sessions.isEmpty()) {
-            p.add("| Start | Slut | Längd | Editor |");
-            p.add("| --- | --- | --- | --- |");
+            p.add("| Start | Slut | Längd | Editor | Projekt |");
+            p.add("| --- | --- | --- | --- | --- |");
             for (Run s : r.sessions) {
-                p.add("| " + hm(s.start) + " | " + hm(s.end) + " | " + fmt(s.end - s.start) + " | " + s.ide + " |");
+                p.add("| " + hm(s.start) + " | " + hm(s.end) + " | " + fmt(s.end - s.start) + " | " + s.ide
+                        + " | " + (s.project.isEmpty() ? "(okänt)" : s.project) + " |");
             }
             p.add("");
         }

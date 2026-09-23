@@ -54,6 +54,13 @@ public final class RapportTest {
         check(got.contains("| VS Code | 1 h 30 min |"), "editorerna listas var för sig");
         check(got.contains("Kort avbrott (Antigravity IDE) vid 13:00"), "avbrottet står i rapporten");
 
+        Long ark = r.byProject.get("Systemarkitektur");
+        check(ark != null && ark == 90 * 60000L + 90_000L, "projektet summeras över båda editorna");
+        check(got.contains("| 09:00 | 10:30 | 1 h 30 min | VS Code | Systemarkitektur |"),
+                "projektet står på passraden");
+        check(got.contains("| 11:00 | 11:01 | 2 min | IntelliJ IDEA | Systemarkitektur |"),
+                "även det pulsslagräddade passet");
+
         // Avslutad dag utan rapport får sin fil; dagens dag ska inte skrivas i förväg.
         Path tmp = Files.createTempDirectory("cts-rapport-");
         try {

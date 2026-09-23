@@ -74,8 +74,11 @@ which is why it is the recommended route.
 
 ## What it measures
 
-Only timestamps and the editor's name. No workspace, no file names, no
-keystrokes, no network. Everything lands in `.codetimestamper/` in your home
+Timestamps, the editor's name, and the **project folder's name** — the basename
+only, never the path. No file names, no keystrokes, no network.
+`codetimestamper.recordProject` (VS Code and forks) and `recordProject` in
+`codetimestamper.xml` (JetBrains) turn the project name off, leaving timestamps
+and the editor's name. Everything lands in `.codetimestamper/` in your home
 directory:
 
 | | |
@@ -89,6 +92,17 @@ directory:
 rapport/2026-09-23.md   finished daily report
 ```
 
+A line looks like this, and nothing else is ever written:
+
+```json
+{"ide":"VS Code","t":"seg","start":1789974000000,"end":1789979400000,"w":"Momento"}
+{"ide":"VS Code","t":"beat","start":1789974000000,"ts":1789979700000}
+```
+
+`t` is `open`, `seg` or `beat`; `beat` is the 30-second heartbeat (see *What
+counts as activity*), and it carries no project name — the name rides on the
+session's own lines.
+
 **Your data is the folder.** Delete `.codetimestamper/` and it is gone; there is
 no account, no sync and no copy anywhere else. Uninstalling the extension leaves
 the folder alone (deliberately — otherwise you would lose your history on an
@@ -98,7 +112,7 @@ Remote-SSH, dev containers and Codespaces are *not tested*. On a remote window
 the extension host runs on the far side, so the folder ends up in that machine's
 home directory rather than yours.
 
-### One total, per editor
+### One total, per editor and per project
 
 Every editor appends to the same folder, so you get one daily total with a
 breakdown:
@@ -113,7 +127,16 @@ breakdown:
 | Google Antigravity | 1 h 55 min |
 | Visual Studio Code | 1 h 28 min |
 | Cursor | 30 min |
+
+| Projekt | Tid |
+| --- | --- |
+| Momento | 1 h 52 min |
+| Systemarkitektur | 45 min |
+| (okänt) | 1 h 16 min |
 ```
+
+`(okänt)` is time logged with `recordProject` off, or by a version older than
+0.1.3 when the project name did not exist yet.
 
 Each editor measures itself, so the total is the **sum of measured editor time**.
 Run two editors side by side and those overlapping minutes are counted twice —
@@ -141,10 +164,34 @@ sessions over-reports by up to ten minutes per session. That is the definition o
 
 Three ways in:
 
-- `CodeTimeStamper: Visa rapport` in the command palette — today, yesterday or
-  the last 7 days, opened as a Markdown preview.
+- `CodeTimeStamper: Visa rapport` in the command palette — today, yesterday, the
+  last 7 days, this month or this year, opened as a Markdown preview.
 - The status bar clock showing the live total; click it.
 - A finished day's report is written automatically the next time the editor runs.
+
+A single day lists its sessions with the project each one belonged to. The
+week, month and year reports add up per editor, **per project** and per day
+(per month for a year):
+
+```markdown
+# CodeTimeStamper — september 2026
+
+**Total: 42 h 10 min** över 18 dagar med tid
+
+| Editor | Tid |
+| --- | --- |
+| Google Antigravity | 30 h 4 min |
+| IntelliJ IDEA | 12 h 6 min |
+
+| Projekt | Tid |
+| --- | --- |
+| Momento | 22 h 40 min |
+| Systemarkitektur | 19 h 30 min |
+
+| Dag | Tid |
+| --- | --- |
+| 2026-09-23 | 3 h 53 min |
+```
 
 And a CLI that reads the same files:
 
@@ -153,11 +200,13 @@ ln -s "$PWD/bin/codetimestamper.js" ~/.local/bin/codetimestamper   # once, from 
 ```
 
 ```bash
-codetimestamper                 # today
-codetimestamper 2026-09-22      # a date
-codetimestamper --vecka         # last seven days
-codetimestamper --dagar         # every stored day
-codetimestamper --json [date]   # raw JSON rather than Markdown
+codetimestamper                    # today
+codetimestamper 2026-09-22         # a date
+codetimestamper --vecka            # last seven days
+codetimestamper --manad [2026-09]  # the whole month, day by day
+codetimestamper --ar [2026]        # the whole year, month by month
+codetimestamper --dagar            # every stored day
+codetimestamper --json [date]      # raw JSON rather than Markdown
 codetimestamper --help
 ```
 
@@ -170,6 +219,7 @@ Replace `~/.local/bin` with anything on your `PATH`; on Windows, run it with
 | --- | --- | --- |
 | `codetimestamper.idleMinutes` | `10` | minutes without activity before the timer pauses |
 | `codetimestamper.enabled` | `true` | turn measuring off without uninstalling |
+| `codetimestamper.recordProject` | `true` | save the project folder's name, so reports can show where the time went. Off = timestamps and the editor's name only |
 
 ## Language
 
@@ -185,13 +235,13 @@ node test/test.js               # 9 — the pure timer/report logic + the shared
 node test/extension-harness.js  # 12 — extension.js against a stubbed host API
 ```
 
-`npm test` runs both (21 checks). CI runs them on Node 20 and 22 and packages
+`npm test` runs both (23 checks). CI runs them on Node 20 and 22 and packages
 the `.vsix`.
 
 The JetBrains half has its own suite, run by its build script:
 
 ```bash
-cd jetbrains && ./build.sh      # 19 tracker checks + 12 report checks
+cd jetbrains && ./build.sh      # 23 tracker checks + 15 report checks
 ```
 
 Its report generator is a second implementation of the same format, so
