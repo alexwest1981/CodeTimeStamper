@@ -15,7 +15,7 @@ import org.jetbrains.annotations.NotNull;
 public final class Settings implements PersistentStateComponent<Settings.Data> {
 
     public static final class Data {
-        public int idleMinutes = 30;
+        public int idleMinutes = Tracker.IDLE_MINUTES;
         public boolean enabled = true;
         /** Spara projektmappens namn (bara namnet, aldrig sökvägen) i loggen. */
         public boolean recordProject = true;

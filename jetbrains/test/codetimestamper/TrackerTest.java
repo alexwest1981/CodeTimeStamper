@@ -16,10 +16,11 @@ public final class TrackerTest {
         Path dir = Files.createTempDirectory("cts-jb-");
         long min = 60_000L;
 
-        // Standardtröskeln står i två klasser; provet ser dem så att en ändring
-        // i den ena utan den andra inte kan gå igenom.
-        check(Tracker.IDLE_MS == 30 * min, "standardtröskeln i Tracker är 30 min");
-        check(new Settings.Data().idleMinutes == 30, "standardtröskeln i Settings är 30 min");
+        // Standardtröskeln har ett hem (Tracker.IDLE_MINUTES) och Settings ärver
+        // det; det här provet är grinden. Det får bara röra Tracker, för CI:s
+        // logikben kompilerar utan IntelliJ-API:t och kan inte se Settings.
+        check(Tracker.IDLE_MINUTES == 30, "standardtröskeln är 30 min");
+        check(Tracker.IDLE_MS == 30 * min, "och IDLE_MS räknas ur den");
 
         try {
             // 1. midnattssplittring

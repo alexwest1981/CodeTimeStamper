@@ -25,7 +25,14 @@ import java.util.List;
  */
 public final class Tracker {
 
-    public static final long IDLE_MS = 30 * 60 * 1000L;
+    /**
+     * Standardtröskeln i minuter — det enda stället i Java-halvan som talet bor
+     * på. Samma tal som package.json skeppar till VS Code-familjen.
+     * Settings.java ärver det, så en ändring här är en ändring överallt.
+     */
+    public static final int IDLE_MINUTES = 30;
+
+    public static final long IDLE_MS = IDLE_MINUTES * 60 * 1000L;
 
     /** Hur ofta ett pulsslag skrivs. Samma tal som rapporten räknar med. */
     public static final long TICK_MS = 30_000L;
