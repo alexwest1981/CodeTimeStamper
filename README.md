@@ -52,9 +52,10 @@ status bar shows today's total — click it for the report.
 
 **JetBrains IDEs** — download `codetimestamper-jetbrains.zip` from the same
 release and use *Settings → Plugins → ⚙ → Install Plugin from Disk…*, then
-restart. Built and verified on IntelliJ IDEA 2026.2.2; see
-[`jetbrains/README.md`](jetbrains/README.md) for the build (no Gradle, no SDK
-download — the installed IDE is the SDK).
+restart. **No build step** — the ZIP is self-contained. Declares IntelliJ
+Platform 243 (2024.3) as its floor, measured on IntelliJ IDEA 2026.2.2. For the
+build itself (contributors only) see
+[`jetbrains/README.md`](jetbrains/README.md).
 
 ## What it measures
 

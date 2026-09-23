@@ -1,29 +1,38 @@
 #!/usr/bin/env bash
-# Bygger JetBrains-pluginen med javac mot IDE:n som redan ligger på disk.
-# Ingen Gradle, ingen SDK-nedladdning: ~/.local/opt/idea/lib/*.jar ÄR SDK:n,
-# och IDE:ns egen JBR ÄR rätt JDK (plattformens jar:ar är Java 25-bytekod, så
-# en Java 21-javac kan inte ens läsa dem — "class file has wrong version 69.0").
+# Bygger JetBrains-pluginen med javac mot en IDE som redan ligger på disk.
+# Ingen Gradle, ingen SDK-nedladdning: IDE:ns lib/*.jar ÄR SDK:n, och IDE:ns
+# egen JBR ÄR rätt JDK (plattformens jar:ar är Java 25-bytekod, så en Java
+# 21-javac kan inte ens läsa dem — "class file has wrong version 69.0").
+#
+# IDE:n hittas automatiskt; sätt IDEA_HOME för att peka ut en specifik.
 set -euo pipefail
 cd "$(dirname "$0")"
+. ./ide.sh
 
-IDE="${IDEA_HOME:-$HOME/.local/opt/idea}"
 OUT=build
 
-[ -x "$IDE/jbr/bin/javac" ] || { echo "Hittar ingen JBR i $IDE — sätt IDEA_HOME." >&2; exit 1; }
-[ -d "$IDE/lib" ] || { echo "Hittar inget lib/ i $IDE — sätt IDEA_HOME." >&2; exit 1; }
+IDE=$(find_ide) || { ide_not_found ./build.sh; exit 1; }
+
+for tool in unzip zip; do
+    command -v "$tool" >/dev/null || { echo "Saknar '$tool'." >&2; exit 1; }
+done
 
 JAVAC="$IDE/jbr/bin/javac"
 JAVA="$IDE/jbr/bin/java"
 
 # En källa till versionen: samma som VS Code-extensionen i repots rot.
-VERSION=$(node -p "require('$PWD/../package.json').version" 2>/dev/null || echo 0.0.0)
+# Läses med grep, inte med node — den som bara vill bygga pluginen ska inte
+# behöva ha node installerat.
+VERSION=$(grep -oE '"version"[[:space:]]*:[[:space:]]*"[^"]+"' ../package.json | head -1 | cut -d'"' -f4)
+VERSION="${VERSION:-0.0.0}"
 
 rm -rf "$OUT"
 mkdir -p "$OUT/classes" "$OUT/test-classes" "$OUT/jar/META-INF" "$OUT/plugin/CodeTimeStamper/lib"
 
 # --release 21: plattformens jar:ar läses som de är, men bytekoden blir 21 så
 # pluginen också går på en IDE med JBR 21 (since-build 243 = 2024.3).
-echo "== kompilerar mot $(basename "$IDE") ($("$JAVAC" -version 2>&1 | cut -d' ' -f2)), version $VERSION"
+echo "== kompilerar mot $IDE"
+echo "   $("$JAVAC" -version 2>&1 | cut -d' ' -f2), plugin-version $VERSION"
 find src -name '*.java' > "$OUT/sources.txt"
 "$JAVAC" -nowarn --release 21 -cp "$IDE/lib/*" -d "$OUT/classes" @"$OUT/sources.txt"
 
@@ -43,3 +52,5 @@ cp -r "$OUT/classes/." "$OUT/jar/"
 
 echo "== klart"
 unzip -l "$OUT/codetimestamper-jetbrains.zip"
+echo
+echo "Installera: Settings → Plugins → ⚙ → Install Plugin from Disk… → jetbrains/$OUT/codetimestamper-jetbrains.zip"
