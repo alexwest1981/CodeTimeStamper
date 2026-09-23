@@ -130,11 +130,12 @@ public final class Statusbar implements StatusBarWidgetFactory {
             if (project == null || project.isDisposed()) {
                 return;
             }
-            Path dir = Tracker.dataDir();
+            Path dataDir = Tracker.dataDir();
+            Path outDir = Rapport.outDir(dataDir);
             String day = Tracker.dayKey(System.currentTimeMillis());
-            Rapport.write(dir, day); // färska siffror när man klickar
+            Rapport.write(dataDir, outDir, day); // färska siffror när man klickar
             VirtualFile vf = LocalFileSystem.getInstance()
-                    .refreshAndFindFileByNioFile(Rapport.rapportFile(dir, day));
+                    .refreshAndFindFileByNioFile(Rapport.rapportFile(outDir, day));
             if (vf == null) {
                 LOG.warn("hittade inte rapportfilen för " + day);
                 return;

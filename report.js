@@ -236,10 +236,24 @@ function yearMarkdown(year = dayKey(Date.now()).slice(0, 4)) {
   return summering(year, yearDays(year), 'manad');
 }
 
+/**
+ * Den samlade filen: dagens pass och månaden i sammandrag i ett dokument, det
+ * man öppnar för att se vilka projekt tiden gick till och när. Rubriknivån
+ * sänks ett steg så att filen får en titel och två avsnitt.
+ */
+function samladMarkdown(day = dayKey(Date.now())) {
+  return [
+    '# CodeTimeStamper\n',
+    markdown([day]).replace(/^# /, '## '),
+    monthMarkdown(day.slice(0, 7)).replace(/^# /, '## '),
+  ].join('\n');
+}
+
 module.exports = {
   readDay,
   listDays,
   markdown,
+  samladMarkdown,
   weekMarkdown,
   monthMarkdown,
   yearMarkdown,

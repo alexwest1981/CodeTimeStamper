@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -54,12 +55,26 @@ public final class Rapport {
     private Rapport() {
     }
 
-    public static Path rapportDir(Path dir) {
-        return dir.resolve("rapport");
+    /**
+     * Den läsbara mappen: det man öppnar och läser. Råloggen ligger kvar i
+     * ~/.codetimestamper — den skrivs atomiskt och flyttas inte, för en flytt
+     * skulle tappa historiken för den som redan har en logg där.
+     */
+    public static Path outDir(Path dataDir) {
+        String o = System.getenv("CODETIMESTAMPER_OUT");
+        if (o != null && !o.isEmpty()) {
+            return java.nio.file.Paths.get(o);
+        }
+        // Sandlådor pekar om datamappen; då följer utmappen med, så en
+        // verifieringskörning inte skriver i någons Documents.
+        if (System.getenv("CODETIMESTAMPER_DIR") != null) {
+            return dataDir.resolve("rapport");
+        }
+        return java.nio.file.Paths.get(System.getProperty("user.home"), "Documents", "CodeTimeStamper");
     }
 
-    public static Path rapportFile(Path dir, String day) {
-        return rapportDir(dir).resolve(day + ".md");
+    public static Path rapportFile(Path outDir, String day) {
+        return outDir.resolve(day + ".md");
     }
 
     public static Dag las(Path dir, String day) {
@@ -164,11 +179,24 @@ public final class Rapport {
         return String.join("\n", p);
     }
 
-    /** Skriver (om) en dags rapport. */
-    public static void write(Path dir, String day) {
+    /** Skriver (om) en dags rapport till den läsbara mappen. */
+    public static void write(Path dataDir, String day) {
+        write(dataDir, outDir(dataDir), day);
+    }
+
+    public static void write(Path dataDir, Path outDir, String day) {
+        Path target = rapportFile(outDir, day);
         try {
-            Files.createDirectories(rapportDir(dir));
-            Files.write(rapportFile(dir, day), markdown(dir, day).getBytes(StandardCharsets.UTF_8));
+            Files.createDirectories(outDir);
+            // Temp + namnbyte: flera IDE-fönster skriver samma rapport, och en
+            // halvskriven markdownfil är värre än en gammal.
+            Path tmp = outDir.resolve(day + ".md." + ProcessHandle.current().pid() + ".tmp");
+            Files.write(tmp, markdown(dataDir, day).getBytes(StandardCharsets.UTF_8));
+            try {
+                Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (IOException atomic) {
+                Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
             System.err.println("[CodeTimeStamper] kunde inte skriva rapport för " + day + ": " + e);
         }
@@ -179,15 +207,19 @@ public final class Rapport {
      * sin rapport även om IDE:n var stängd över midnatt — den dagens sista
      * skrivning skedde ju innan dagen var slut.
      */
-    public static void writeMissing(Path dir, String today) {
-        try (DirectoryStream<Path> ds = Files.newDirectoryStream(dir, "*.jsonl")) {
+    public static void writeMissing(Path dataDir, String today) {
+        writeMissing(dataDir, outDir(dataDir), today);
+    }
+
+    public static void writeMissing(Path dataDir, Path outDir, String today) {
+        try (DirectoryStream<Path> ds = Files.newDirectoryStream(dataDir, "*.jsonl")) {
             for (Path f : ds) {
                 String name = f.getFileName().toString();
                 String day = name.substring(0, name.length() - ".jsonl".length());
-                if (day.compareTo(today) >= 0 || Files.exists(rapportFile(dir, day))) {
+                if (day.compareTo(today) >= 0 || Files.exists(rapportFile(outDir, day))) {
                     continue;
                 }
-                write(dir, day);
+                write(dataDir, outDir, day);
             }
         } catch (IOException e) {
             // Ingen logg ännu är det normala första gången, inte ett fel.

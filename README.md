@@ -89,8 +89,9 @@ directory:
 
 ```
 2026-09-23.jsonl        raw, one line per event
-rapport/2026-09-23.md   finished daily report
 ```
+
+(Reports are not kept here — see *The folder you actually read* below.)
 
 A line looks like this, and nothing else is ever written:
 
@@ -102,6 +103,29 @@ A line looks like this, and nothing else is ever written:
 `t` is `open`, `seg` or `beat`; `beat` is the 30-second heartbeat (see *What
 counts as activity*), and it carries no project name — the name rides on the
 session's own lines.
+
+### The folder you actually read
+
+The raw log is machine food, so it stays hidden. The reports are what you open,
+and they live in a normal folder:
+
+| | |
+| --- | --- |
+| Linux, macOS | `~/Documents/CodeTimeStamper/` |
+| Windows | `%USERPROFILE%\Documents\CodeTimeStamper\` |
+
+```
+CodeTimeStamper.md      one file: today's sessions and the month so far
+2026-09-23.md           a finished day, written the next time an editor runs
+```
+
+`CodeTimeStamper.md` is rewritten whenever a session ends, so it is current when
+you open it — which projects got the time, and when. `CodeTimeStamper: Öppna
+rapportmappen` opens the folder.
+
+The log is never moved: reports are generated from it, so they can be rewritten
+at any time, and moving it would strand the history of anyone who already has a
+log. `CODETIMESTAMPER_OUT` points the readable folder somewhere else.
 
 **Your data is the folder.** Delete `.codetimestamper/` and it is gone; there is
 no account, no sync and no copy anywhere else. Uninstalling the extension leaves
@@ -164,10 +188,11 @@ sessions over-reports by up to ten minutes per session. That is the definition o
 
 Three ways in:
 
+- `~/Documents/CodeTimeStamper/CodeTimeStamper.md` — today and the month so far,
+  rewritten as sessions end. No command needed.
 - `CodeTimeStamper: Visa rapport` in the command palette — today, yesterday, the
   last 7 days, this month or this year, opened as a Markdown preview.
 - The status bar clock showing the live total; click it.
-- A finished day's report is written automatically the next time the editor runs.
 
 A single day lists its sessions with the project each one belonged to. The
 week, month and year reports add up per editor, **per project** and per day

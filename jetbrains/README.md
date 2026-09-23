@@ -38,9 +38,16 @@ Extract the ZIP into that directory, so you end up with
 project open. It refreshes every 30 seconds, shows ` (pausad)` while the timer
 is paused, and opens today's report in an editor tab when clicked.
 
-There is no tool window and no settings page — `idleMinutes` and `enabled` live
-in `codetimestamper.xml` in the IDE config dir, and the file only appears once
-you change something.
+The reports land in `~/Documents/CodeTimeStamper/` (`%USERPROFILE%\Documents\`
+on Windows), not in the hidden log folder: the raw `~/.codetimestamper/*.jsonl`
+stays put because it is what everything is generated from. `CODETIMESTAMPER_OUT`
+points the readable folder somewhere else, and a sandbox that overrides
+`CODETIMESTAMPER_DIR` gets its reports beside its log — which is why
+`verify.sh` writes nothing into your Documents.
+
+There is no tool window and no settings page — `idleMinutes`, `enabled` and
+`recordProject` live in `codetimestamper.xml` in the IDE config dir, and the file
+only appears once you change something.
 
 Requires IntelliJ Platform **243 (2024.3) or newer** — that floor is what
 `plugin.xml` declares (the APIs used are older than it); the build is *measured*
@@ -130,7 +137,7 @@ the headless proof plus this log line from a normal session.
 | `statusBarWidgetFactory` | The counter in the status bar. `createWidget(Project)` **must** be implemented: the interface's own default throws `AbstractMethodError` (read out of the bytecode with `javap`), while the coroutine variant delegates to it, so one implementation covers both. `isEnabledByDefault()` already returns `true`, which is why the widget appears without anyone enabling it. |
 | JVM shutdown hook | Closes the open session on exit. `AppLifecycleListener.appClosing()` exists, but no extension point for it is declared in this build (searched, not assumed), and a shutdown hook is stdlib. A `kill -9` is caught by the heartbeat instead: the session is counted up to its last `beat` line, at most 30 s short. |
 | `applicationService` + `@State` | `idleMinutes`, `enabled` and `recordProject`, stored in `codetimestamper.xml` in the IDE config dir. No settings UI. |
-| `Rapport.java` | The daily markdown, written at startup for finished days and again whenever a session ends. A second implementation of `report.js`'s format — including the per-session project column — held in place by the shared fixture below. |
+| `Rapport.java` | The daily markdown, written at startup for finished days and again whenever a session ends, into `~/Documents/CodeTimeStamper/` — the *readable* folder, not the log folder. A second implementation of `report.js`'s format — including the per-session project column — held in place by the shared fixture below. The combined `CodeTimeStamper.md` and the month/year views come from the VS Code half and the CLI; this half writes the day files. |
 | Project name | `Project.getName()` (the folder's basename) reaches `Tracker.setProject` from the status bar widget's `install()`, which is where a project window exists. The tracker is application-wide, so it carries one name at a time: with several IDE windows open, the last window's project wins. |
 
 ## Tests

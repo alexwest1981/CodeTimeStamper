@@ -21,10 +21,10 @@
     på — den dyker upp av sig själv i varje fönster.
     <br/><br/>
     Dagsrapport som markdown skrivs automatiskt till
-    <code>~/.codetimestamper/rapport/</code>, samma fil och samma format som
-    VS Code-varianten skriver. <code>idleMinutes</code> och
-    <code>enabled</code> ändras i <code>codetimestamper.xml</code> i IDE:ns
-    konfigurationsmapp (där finns ingen inställningssida).
+    <code>~/Documents/CodeTimeStamper/</code>, samma fil och samma format som
+    VS Code-varianten skriver. <code>idleMinutes</code>, <code>enabled</code>
+    och <code>recordProject</code> ändras i <code>codetimestamper.xml</code> i
+    IDE:ns konfigurationsmapp (där finns ingen inställningssida).
   ]]></description>
   <depends>com.intellij.modules.platform</depends>
   <extensions defaultExtensionNs="com.intellij">

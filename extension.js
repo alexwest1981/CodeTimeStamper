@@ -3,9 +3,10 @@
 const vscode = require('vscode');
 const path = require('path');
 const fs = require('fs');
-const { Tracker, dataDir, dayKey, TICK_MS } = require('./tracker');
+const { Tracker, dataDir, outDir, dayKey, TICK_MS } = require('./tracker');
 const {
   markdown,
+  samladMarkdown,
   weekMarkdown,
   monthMarkdown,
   yearMarkdown,
@@ -34,29 +35,37 @@ function projectName() {
   return folders && folders.length ? folders[0].name : '';
 }
 
-// Skriv dagens rapport till rapport/ om den saknas. Gör att en dag får sin
-// fil även om editorn var stängd över midnatt.
+// Skriv hela filen, aldrig bitar: flera fönster skriver samma rapport, och en
+// halvskriven markdownfil är värre än en gammal. Temp + rename är atomiskt på
+// samma filsystem.
+function skrivFil(file, text) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const tmp = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, text);
+  fs.renameSync(tmp, file);
+}
+
+// Skriv rapport till den läsbara mappen för varje avslutad dag som saknar en.
+// Gör att en dag får sin fil även om editorn var stängd över midnatt.
 function writeDailyReports() {
   const today = dayKey(Date.now());
-  const outDir = path.join(dataDir(), 'rapport');
+  const dir = outDir();
   const days = listDays();
   for (const day of days) {
     if (day >= today) continue;
-    const file = path.join(outDir, `${day}.md`);
+    const file = path.join(dir, `${day}.md`);
     if (fs.existsSync(file)) continue;
-    fs.mkdirSync(outDir, { recursive: true });
-    fs.writeFileSync(file, markdown([day]));
+    skrivFil(file, markdown([day]));
   }
 }
 
-// Dagens rapport skrivs om när ett pass tar slut, så att markdownfilen på disk
-// är aktuell utan att man behöver öppna rapporten. Samma regel som i
+// Dagens rapport och den samlade filen skrivs om när ett pass tar slut — och
+// vid start — så att det man öppnar i Documents är aktuellt. Samma regel som i
 // JetBrains-pluginen.
 function writeTodayReport() {
-  const outDir = path.join(dataDir(), 'rapport');
-  fs.mkdirSync(outDir, { recursive: true });
-  const today = dayKey(Date.now());
-  fs.writeFileSync(path.join(outDir, `${today}.md`), markdown([today]));
+  const day = dayKey(Date.now());
+  skrivFil(path.join(outDir(), `${day}.md`), markdown([day]));
+  skrivFil(path.join(outDir(), 'CodeTimeStamper.md'), samladMarkdown(day));
 }
 
 function refreshStatus() {
@@ -147,13 +156,14 @@ function activate(context) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('codetimestamper.openFolder', () => {
-      vscode.env.openExternal(vscode.Uri.file(dataDir()));
+      vscode.env.openExternal(vscode.Uri.file(outDir()));
     })
   );
 
   status.show();
   refreshStatus();
   writeDailyReports();
+  writeTodayReport();
 }
 
 function deactivate() {

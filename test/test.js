@@ -8,8 +8,15 @@ const path = require('path');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'cts-'));
 process.env.CODETIMESTAMPER_DIR = TMP;
 
-const { Tracker, splitDays, dayKey, TICK_MS } = require('../tracker');
-const { readDay, markdown, weekMarkdown, monthMarkdown, yearMarkdown } = require('../report');
+const { Tracker, splitDays, dayKey, TICK_MS, outDir } = require('../tracker');
+const {
+  readDay,
+  markdown,
+  samladMarkdown,
+  weekMarkdown,
+  monthMarkdown,
+  yearMarkdown,
+} = require('../report');
 
 const MIN = 60000;
 let n = 0;
@@ -186,6 +193,28 @@ const ok = (name) => console.log(`  ok  ${++n}. ${name}`);
   assert.ok(ar.includes('| 2026-09 |'), 'september finns med från de andra proven');
   assert.ok(!/\| 2026-0[1-7] \|/.test(ar), 'månader utan tid listas inte');
   ok('månads- och årsrapport summerar dagarna');
+}
+
+// 12. den samlade filen: dag och månad i ett dokument
+{
+  const md = samladMarkdown('2026-08-03');
+  assert.ok(md.startsWith('# CodeTimeStamper\n'), 'filen har en titel');
+  assert.ok(md.includes('## CodeTimeStamper — mån 2026-08-03'), 'dagens avsnitt');
+  assert.ok(md.includes('## CodeTimeStamper — augusti 2026'), 'månadens avsnitt');
+  assert.ok(md.includes('| Momento | 25 min |'), 'projektet är med');
+  ok('samlade filen har dag och månad i ett dokument');
+}
+
+// 13. den läsbara mappen följer datamappen i prov, så inget prov skriver i
+// någons Documents (och blir ~/Documents/CodeTimeStamper i skarp drift)
+{
+  assert.strictEqual(outDir(), path.join(TMP, 'rapport'), 'ompekad datamapp ger ompekad utmapp');
+  const keep = process.env.CODETIMESTAMPER_OUT;
+  process.env.CODETIMESTAMPER_OUT = '/tmp/cts-ut';
+  assert.strictEqual(outDir(), '/tmp/cts-ut', 'CODETIMESTAMPER_OUT vinner');
+  if (keep === undefined) delete process.env.CODETIMESTAMPER_OUT;
+  else process.env.CODETIMESTAMPER_OUT = keep;
+  ok('den läsbara mappen pekas om i prov');
 }
 
 fs.rmSync(TMP, { recursive: true, force: true });

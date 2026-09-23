@@ -16,6 +16,17 @@ function dataDir() {
   return process.env.CODETIMESTAMPER_DIR || path.join(os.homedir(), '.codetimestamper');
 }
 
+// Den läsbara mappen: det man öppnar och läser. Råloggen ligger kvar i
+// ~/.codetimestamper — den skrivs atomiskt och flyttas inte, för en flytt
+// skulle tappa historiken för den som redan har en logg där.
+function outDir() {
+  if (process.env.CODETIMESTAMPER_OUT) return process.env.CODETIMESTAMPER_OUT;
+  // Prov och sandlådor pekar om datamappen; då följer utmappen med, så inget
+  // prov skriver i någons Documents.
+  if (process.env.CODETIMESTAMPER_DIR) return path.join(process.env.CODETIMESTAMPER_DIR, 'rapport');
+  return path.join(os.homedir(), 'Documents', 'CodeTimeStamper');
+}
+
 function pad(n) {
   return String(n).padStart(2, '0');
 }
@@ -101,4 +112,4 @@ class Tracker {
   }
 }
 
-module.exports = { Tracker, IDLE_MS, TICK_MS, dataDir, dayKey, splitDays };
+module.exports = { Tracker, IDLE_MS, TICK_MS, dataDir, outDir, dayKey, splitDays };

@@ -31,6 +31,13 @@ mkdir -p "$SB/config/plugins" "$SB/system/log" "$SB/data" "$SB/projekt"
 unzip -q "$ZIP" -d "$SB/config/plugins/"
 echo "// tomt projekt, bara så att ett riktigt fönster med statusrad byggs" > "$SB/projekt/README.md"
 
+# En avslutad dag i sandlådans logg: gör att rapportskrivningen går att bevisa
+# utan aktivitet. Plockas upp av writeMissing vid start och ska ge
+# $SB/data/rapport/2026-01-05.md.
+printf '{"ide":"VS Code","t":"seg","start":%s,"end":%s,"w":"Sandlådan"}\n' \
+    "$(date -d '2026-01-05 09:00' +%s)000" "$(date -d '2026-01-05 10:30' +%s)000" \
+    > "$SB/data/2026-01-05.jsonl"
+
 # Licensen, annars stannar starten i registreringsdialogen i stället för att
 # initiera plugin-komponenterna. Glob över alla JetBrains-produkter — inte en
 # hårdkodad sökväg — och Community-utgåvor behöver ingen alls.
@@ -133,9 +140,17 @@ if [ "${GUI:-0}" = 1 ] && [ "$FOUND" = 1 ]; then
 fi
 
 echo
-echo "== datamappen"
+echo "== datamappen (råloggen)"
 ls -la "$SB/data" 2>/dev/null
-[ -d "$SB/data/rapport" ] && ls -la "$SB/data/rapport" 2>/dev/null
+echo
+echo "== den läsbara mappen (rapporten)"
+if [ -d "$SB/data/rapport" ]; then
+    ls -la "$SB/data/rapport"
+    echo "--- förväntat innehåll: 2026-01-05.md ur sandlådans seedade dag ---"
+    head -12 "$SB/data/rapport/2026-01-05.md" 2>/dev/null
+else
+    echo "(ingen rapportmapp — skrivvägen är inte bevisad i den här körningen)"
+fi
 
 echo
 echo "== stänger"

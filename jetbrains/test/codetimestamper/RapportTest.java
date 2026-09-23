@@ -67,7 +67,7 @@ public final class RapportTest {
             Files.writeString(tmp.resolve("2026-09-20.jsonl"),
                     "{\"ide\":\"VS Code\",\"t\":\"open\",\"ts\":"
                             + Rapport.num("{\"ts\":0}", "ts") + "}\n", StandardCharsets.UTF_8);
-            Rapport.writeMissing(tmp, "2026-09-23");
+            Rapport.writeMissing(tmp, tmp, "2026-09-23");
             check(Files.exists(Rapport.rapportFile(tmp, "2026-09-20")), "avslutad dag får sin rapport");
             check(!Files.exists(Rapport.rapportFile(tmp, "2026-09-23")), "dagens dag skrivs inte i förväg");
         } finally {
