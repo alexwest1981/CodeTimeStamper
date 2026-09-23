@@ -19,7 +19,9 @@ const listeners = {}; // händelsenamn -> [fn]
 const commands = {};
 const statusBars = [];
 let executed = [];
-let idleMinutes = 10;
+// null = Alex har inte satt något: stubben ger då tillbaka det värde extension.js
+// själv skickar in som standard, så provet mäter den tröskel som faktiskt skeppas.
+let idleMinutes = null;
 
 const ev = (name) => (fn) => {
   (listeners[name] = listeners[name] || []).push(fn);
@@ -51,7 +53,7 @@ const vscode = {
   },
   workspace: {
     getConfiguration: () => ({
-      get: (k, d) => (k === 'idleMinutes' ? idleMinutes : k === 'enabled' ? d : d),
+      get: (k, d) => (k === 'idleMinutes' ? idleMinutes ?? d : d),
     }),
     onDidChangeTextDocument: ev('textDocument'),
     onDidSaveTextDocument: ev('save'),
@@ -102,8 +104,18 @@ const ok = (name) => console.log(`  ok  ${++n}. ${name}`);
 
 (async () => {
   const { activate, deactivate } = require('../extension');
+  const { IDLE_MS } = require('../tracker');
+  const pkg = require('../package.json');
   const disposed = [];
   activate({ subscriptions: { push: (d) => disposed.push(d) } });
+
+  // Tröskeln står i tre filer; de två som inte kan läsas ur koden provas här.
+  assert.strictEqual(
+    pkg.contributes.configuration.properties['codetimestamper.idleMinutes'].default,
+    IDLE_MS / 60000,
+    'package.json-standard och tracker.IDLE_MS säger samma sak'
+  );
+  ok('standardtröskeln är densamma i package.json och tracker.js');
 
   assert.strictEqual(Object.keys(commands).length, 2, 'två kommandon registreras');
   assert.strictEqual(Object.keys(listeners).length, 12, 'tolv aktivitetssignaler lyssnas på');
@@ -146,7 +158,7 @@ const ok = (name) => console.log(`  ok  ${++n}. ${name}`);
   ok('nio tysta minuter avbryter inte, och lämnar ett pulsslag');
 
   // över tröskeln -> segmentet stängs vid senaste aktivitet + tröskeln
-  clock += 2 * 60000;
+  clock += 22 * 60000;
   tick();
   const lines = fs
     .readFileSync(path.join(TMP, '2026-09-23.jsonl'), 'utf8')
@@ -155,12 +167,12 @@ const ok = (name) => console.log(`  ok  ${++n}. ${name}`);
     .map(JSON.parse);
   const seg = lines.find((l) => l.t === 'seg');
   assert.ok(seg, 'segmentet stängdes');
-  assert.strictEqual(seg.end - seg.start, 30 * 60000, '20 min aktivt + 10 min tröskel');
+  assert.strictEqual(seg.end - seg.start, 50 * 60000, '20 min aktivt + 30 min tröskel');
   assert.strictEqual(seg.ide, 'Visual Studio Code (prov)');
-  ok('elva tysta minuter stänger segmentet, tiden stannar vid tröskeln');
+  ok('trettioen tysta minuter stänger segmentet, tiden stannar vid tröskeln');
 
   // statusraden visar dagens summa och att timern är pausad
-  assert.ok(statusBars[0].text.includes('30 min'), statusBars[0].text);
+  assert.ok(statusBars[0].text.includes('50 min'), statusBars[0].text);
   assert.ok(statusBars[0].text.includes('pausad'), statusBars[0].text);
   ok('statusraden visar dagens tid och pausläget');
 
@@ -184,7 +196,7 @@ const ok = (name) => console.log(`  ok  ${++n}. ${name}`);
     .map(JSON.parse);
   assert.strictEqual(after[after.length - 1].end - after[after.length - 1].start, 60000);
   ok('idleMinutes-inställningen slår igenom direkt');
-  idleMinutes = 10;
+  idleMinutes = null;
 
   // kommandot Visar rapport
   clock += 5 * 60000;

@@ -16,6 +16,11 @@ public final class TrackerTest {
         Path dir = Files.createTempDirectory("cts-jb-");
         long min = 60_000L;
 
+        // Standardtröskeln står i två klasser; provet ser dem så att en ändring
+        // i den ena utan den andra inte kan gå igenom.
+        check(Tracker.IDLE_MS == 30 * min, "standardtröskeln i Tracker är 30 min");
+        check(new Settings.Data().idleMinutes == 30, "standardtröskeln i Settings är 30 min");
+
         try {
             // 1. midnattssplittring
             ZoneId z = ZoneId.systemDefault();

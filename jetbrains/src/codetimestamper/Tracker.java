@@ -25,7 +25,7 @@ import java.util.List;
  */
 public final class Tracker {
 
-    public static final long IDLE_MS = 10 * 60 * 1000L;
+    public static final long IDLE_MS = 30 * 60 * 1000L;
 
     /** Hur ofta ett pulsslag skrivs. Samma tal som rapporten räknar med. */
     public static final long TICK_MS = 30_000L;

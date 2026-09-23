@@ -5,7 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const IDLE_MS = 10 * 60 * 1000;
+const IDLE_MS = 30 * 60 * 1000;
 
 // Hur ofta ett pulsslag skrivs. Rapportens beräkning av ett kraschat pass
 // använder samma tal, så det bor här och inte på två ställen.

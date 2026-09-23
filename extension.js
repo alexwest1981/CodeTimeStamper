@@ -23,7 +23,7 @@ let timer;
 
 function cfg() {
   const c = vscode.workspace.getConfiguration('codetimestamper');
-  return { idleMs: Math.max(1, c.get('idleMinutes', 10)) * 60000, enabled: c.get('enabled', true) };
+  return { idleMs: Math.max(1, c.get('idleMinutes', 30)) * 60000, enabled: c.get('enabled', true) };
 }
 
 // Projektmappens namn — basename, aldrig sökvägen. Tomt när inställningen är

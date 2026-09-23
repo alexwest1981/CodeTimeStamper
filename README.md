@@ -7,9 +7,9 @@ How much of the day did you actually spend writing code? One number per day,
 measured inside the editor. No account, no server, no telemetry — the timer
 writes timestamps to a file on your own machine and nothing else.
 
-The timer starts when the editor opens, pauses after 10 minutes without
+The timer starts when the editor opens, pauses after 30 minutes without
 activity, and continues on your next keystroke. It runs up to the threshold: a
-nine-minute silence counts, the tenth ends the session.
+twenty-nine-minute silence counts, the thirtieth ends the session.
 
 ## Install
 
@@ -170,7 +170,7 @@ keyboard twice, and guessing would mean inspecting your windows.
 ### What counts as activity
 
 Typing, selecting, **scrolling**, switching editors, saving, terminal, debug.
-Scrolling is deliberate: without it, ten minutes of reading code would look like
+Scrolling is deliberate: without it, half an hour of reading code would look like
 idle time. Signals from an unfocused window are ignored, so an agent or formatter
 writing files in the background cannot keep the timer alive all night.
 
@@ -180,9 +180,10 @@ it was still alive. A crash therefore loses at most half a minute instead of the
 whole session. A session killed within 30 seconds of its first keystroke has no
 heartbeat yet — it is listed in the report as interrupted and not counted.
 
-*Known ceiling:* a nine-minute silence is credited, so a day of many short
-sessions over-reports by up to ten minutes per session. That is the definition of
-"pauses after 10 minutes", not a bug. `idleMinutes` changes it.
+*Known ceiling:* every pause is credited up to the threshold, so a day of many
+short sessions over-reports by up to 30 minutes per session. That is the
+definition of "pauses after 30 minutes", not a bug — the wide threshold is what
+keeps a detour into the browser inside the same session. `idleMinutes` changes it.
 
 ## Reports
 
@@ -242,7 +243,7 @@ Replace `~/.local/bin` with anything on your `PATH`; on Windows, run it with
 
 | Setting | Default | |
 | --- | --- | --- |
-| `codetimestamper.idleMinutes` | `10` | minutes without activity before the timer pauses |
+| `codetimestamper.idleMinutes` | `30` | minutes without activity before the timer pauses |
 | `codetimestamper.enabled` | `true` | turn measuring off without uninstalling |
 | `codetimestamper.recordProject` | `true` | save the project folder's name, so reports can show where the time went. Off = timestamps and the editor's name only |
 
