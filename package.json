@@ -2,7 +2,7 @@
   "name": "codetimestamper",
   "displayName": "CodeTimeStamper",
   "description": "Tidstämplar aktiv kodtid per dag. Inget annat.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "alexwest",
   "license": "MIT",
   "author": {
