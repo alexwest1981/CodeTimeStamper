@@ -1,0 +1,49 @@
+{
+  "name": "codetimestamper",
+  "displayName": "CodeTimeStamper",
+  "description": "Tidstämplar aktiv kodtid per dag. Inget annat.",
+  "version": "0.1.0",
+  "publisher": "alexwest",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "codetimestamper.show",
+        "title": "CodeTimeStamper: Visa rapport"
+      },
+      {
+        "command": "codetimestamper.openFolder",
+        "title": "CodeTimeStamper: Öppna datamappen"
+      }
+    ],
+    "configuration": {
+      "title": "CodeTimeStamper",
+      "properties": {
+        "codetimestamper.idleMinutes": {
+          "type": "number",
+          "default": 10,
+          "description": "Minuter utan aktivitet innan timern pausar."
+        },
+        "codetimestamper.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Stäng av mätningen helt utan att avinstallera."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "test": "node test/test.js && node test/extension-harness.js",
+    "package": "npx --yes @vscode/vsce package --out codetimestamper.vsix"
+  }
+}
