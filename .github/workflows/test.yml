@@ -1,0 +1,28 @@
+name: test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Prov
+        run: npm test
+      - name: Paketera
+        run: npx --yes @vscode/vsce package --out codetimestamper.vsix
+      - uses: actions/upload-artifact@v4
+        if: matrix.node == 22
+        with:
+          name: codetimestamper-vsix
+          path: codetimestamper.vsix

@@ -5,6 +5,25 @@
   "version": "0.1.0",
   "publisher": "alexwest",
   "license": "MIT",
+  "author": {
+    "name": "Alex"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alexwest1981/CodeTimeStamper.git"
+  },
+  "bugs": {
+    "url": "https://github.com/alexwest1981/CodeTimeStamper/issues"
+  },
+  "homepage": "https://github.com/alexwest1981/CodeTimeStamper#readme",
+  "keywords": [
+    "time tracking",
+    "productivity",
+    "activity",
+    "idle",
+    "privacy",
+    "stats"
+  ],
   "engines": {
     "vscode": "^1.80.0"
   },

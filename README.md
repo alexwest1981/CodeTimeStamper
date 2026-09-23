@@ -1,54 +1,125 @@
 # CodeTimeStamper
 
-Aktiv kodtid per dag. Timern startar när editorn öppnas, pausar efter 10 minuter
-utan aktivitet och fortsätter när du gör något igen. Timern går fram till
-tröskeln: en tyst lucka på nio minuter räknas, den tionde avslutar passet.
+[![test](https://github.com/alexwest1981/CodeTimeStamper/actions/workflows/test.yml/badge.svg)](https://github.com/alexwest1981/CodeTimeStamper/actions/workflows/test.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## Vad som mäts
+How much of the day did you actually spend writing code? One number per day,
+measured inside the editor. No account, no server, no telemetry — the timer
+writes timestamps to a file on your own machine and nothing else.
 
-Bara tidsstämplar och vilken editor. Ingen arbetsyta, inga filnamn, inga
-tangenttryck, ingen nätverkstrafik. Loggen ligger i `~/.codetimestamper/`:
+The timer starts when the editor opens, pauses after 10 minutes without
+activity, and continues on your next keystroke. It runs up to the threshold: a
+nine-minute silence counts, the tenth ends the session.
 
-```
-~/.codetimestamper/2026-09-23.jsonl     rådata, en rad per händelse
-~/.codetimestamper/rapport/2026-09-23.md  färdig dagsrapport
-```
+## Install
 
-Alla editorer skriver till samma mapp, så dagssumman blir totalen över VS Code,
-Antigravity, Cursor och resten — uppdelad per editor.
+Works in VS Code, **Antigravity**, Cursor, Windsurf and VSCodium — one
+extension, same API. (IntelliJ and other JetBrains IDEs need a separate plugin;
+not written yet.)
 
-## Vad som räknas som aktivitet
+**From a release** — download `codetimestamper.vsix` from
+[Releases](https://github.com/alexwest1981/CodeTimeStamper/releases), then
+either open *Extensions → ⋯ → Install from VSIX…* in the editor, or run the
+line for your editor:
 
-Textändring, markering, **skrollning**, editorbyte, sparning, terminal, debug.
-Skrollningen är medveten: annars skulle tio minuters kodläsning räknas som vila.
-Signaler i ett ofokuserat fönster ignoreras, så en agent som skriver filer i
-bakgrunden håller inte timern vid liv.
-
-Ett kraschat segment (öppnat utan avslut) räknas inte utan listas i rapporten.
-
-## Rapport
-
-`CodeTimeStamper: Visa rapport` i kommandopaletten (idag / igår / 7 dagar), eller:
-
-```
-codetimestamper              dagens rapport
-codetimestamper 2026-09-22   ett datum
-codetimestamper --vecka      senaste sju dagarna
-codetimestamper --dagar      alla sparade dagar
+```bash
+code --install-extension codetimestamper.vsix                  # VS Code
+cursor --install-extension codetimestamper.vsix                # Cursor
+~/.local/opt/antigravity/bin/antigravity-ide --install-extension codetimestamper.vsix   # Antigravity
 ```
 
-## Bygga och installera
+> Antigravity: use the CLI script above, not `antigravity`. The app binary
+> accepts `--install-extension`, prints nothing and exits 0 without installing.
+
+**From source** — no dependencies and no build step, just plain JS:
+
+```bash
+git clone https://github.com/alexwest1981/CodeTimeStamper
+cd CodeTimeStamper
+npm test                # 18 checks
+npm run package         # -> codetimestamper.vsix
+```
+
+Then restart the editor. The timer activates on startup, and a clock in the
+status bar shows today's total — click it for the report.
+
+## What it measures
+
+Only timestamps and the editor's name. No workspace, no file names, no
+keystrokes, no network. Everything lands in `~/.codetimestamper/`:
 
 ```
-npm test                                 # körbara prov, inga beroenden
-npm run package                          # -> codetimestamper.vsix
-code --install-extension codetimestamper.vsix
-cursor --install-extension codetimestamper.vsix
-~/.local/opt/antigravity/bin/antigravity-ide --install-extension codetimestamper.vsix
+~/.codetimestamper/2026-09-23.jsonl        raw, one line per event
+~/.codetimestamper/rapport/2026-09-23.md   finished daily report
 ```
 
-Antigravity: använd CLI-skriptet i `bin/`, inte appbinären. `~/.local/bin/antigravity`
-är själva programmet och svarar `exit 0` utan att installera något.
+Every editor appends to the same folder, so the daily total covers all of them
+at once, broken down per editor:
 
-Ren JS, inget byggsteg, inga beroenden. `idleMinutes` och `enabled` finns i
-Inställningar.
+```markdown
+# CodeTimeStamper — tis 2026-09-23
+
+**Total: 3 h 53 min**
+
+| Editor | Tid |
+| --- | --- |
+| Google Antigravity | 1 h 55 min |
+| Visual Studio Code | 1 h 28 min |
+| Cursor | 30 min |
+```
+
+### What counts as activity
+
+Typing, selecting, **scrolling**, switching editors, saving, terminal, debug.
+Scrolling is deliberate: without it, ten minutes of reading code would look like
+idle time. Signals from an unfocused window are ignored, so an agent or formatter
+writing files in the background cannot keep the timer alive all night.
+
+A session that never closed (the editor crashed) is not counted; it is listed in
+the report as interrupted instead.
+
+*Known ceiling:* a nine-minute silence is credited, so a day of many short
+sessions over-reports by up to ten minutes per session. That is the definition of
+"pauses after 10 minutes", not a bug. `idleMinutes` changes it.
+
+## Reports
+
+`CodeTimeStamper: Visa rapport` in the command palette (today / yesterday / last
+7 days), a status bar clock showing the live total, and a CLI:
+
+```bash
+ln -s "$PWD/bin/codetimestamper.js" ~/.local/bin/codetimestamper   # once
+codetimestamper              # today
+codetimestamper 2026-09-22   # a date
+codetimestamper --vecka      # last seven days
+codetimestamper --dagar      # every stored day
+```
+
+A finished day's report is written automatically the next time the editor runs.
+
+## Settings
+
+| Setting | Default | |
+| --- | --- | --- |
+| `codetimestamper.idleMinutes` | `10` | minutes without activity before the timer pauses |
+| `codetimestamper.enabled` | `true` | turn measuring off without uninstalling |
+
+## Language
+
+The command palette entries, settings and generated reports are currently in
+Swedish, the author's language. Say so in an issue if you want English.
+
+## How it is verified
+
+Two layers, both plain `node` and `assert`:
+
+```bash
+node test/test.js               # 6 — the pure timer/report logic
+node test/extension-harness.js  # 12 — extension.js against a stubbed host API
+```
+
+Activation in a real editor is measured too, not assumed: launching VS Code with
+a temporary profile logs
+`ExtensionService#_doActivateExtension … activationEvent: 'onStartupFinished'`.
+
+MIT licensed.
