@@ -9,6 +9,10 @@ set -euo pipefail
 cd "$(dirname "$0")"
 . ./ide.sh
 
+# Rapportens klockslag skrivs i lokal tid och RapportTest jämför mot en fixtur,
+# så zonen måste vara känd. Samma värde i npm-testet.
+export TZ=Europe/Stockholm
+
 OUT=build
 
 IDE=$(find_ide) || { ide_not_found ./build.sh; exit 1; }
@@ -40,6 +44,7 @@ echo "== proven"
 find test -name '*.java' > "$OUT/test-sources.txt"
 "$JAVAC" -nowarn --release 21 -cp "$IDE/lib/*:$OUT/classes" -d "$OUT/test-classes" @"$OUT/test-sources.txt"
 "$JAVA" -cp "$IDE/lib/*:$OUT/classes:$OUT/test-classes" codetimestamper.TrackerTest
+"$JAVA" -cp "$IDE/lib/*:$OUT/classes:$OUT/test-classes" codetimestamper.RapportTest
 
 echo "== paketerar"
 sed "s|<version>.*</version>|<version>$VERSION</version>|" META-INF/plugin.xml > "$OUT/jar/META-INF/plugin.xml"

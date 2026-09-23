@@ -42,6 +42,7 @@ public final class TrackerTest {
             String day1 = read(dir, "2026-09-22.jsonl");
             check(day1.contains("\"t\":\"open\""), "öppningsrad skriven");
             check(day1.contains("\"t\":\"seg\""), "stängningsrad skriven");
+            check(day1.contains("\"t\":\"beat\",\"start\":" + t0), "pulsslag skrivet, med sin egen starttid");
             long segMs = segLength(day1);
             check(segMs == 30 * min, "20 min aktivt + 10 min tröskel = 30 min, var " + segMs / min);
             check(day1.contains("\"ide\":\"IntelliJ IDEA\""), "IDE:ns namn med i raden");
@@ -52,14 +53,14 @@ public final class TrackerTest {
             t2.close(t0 + 12 * min);
             String both = read(dir, "2026-09-22.jsonl");
             check(both.contains("\"ide\":\"VS Code\""), "andra editorn hamnar i samma fil");
-            check(both.split("\n").length == 4, "fyra rader totalt, var " + both.split("\n").length);
+            check(both.split("\n").length == 5, "fem rader totalt (open, pulsslag, seg, open, seg), var " + both.split("\n").length);
 
             // 4. krasch: öppet segment utan avslut
             Tracker t3 = new Tracker("KraschIDE", 10 * min, dir);
             t3.touch(t0);
             String day1b = read(dir, "2026-09-22.jsonl");
             check(day1b.endsWith("\"t\":\"open\",\"ts\":" + t0 + "}"), "kraschraden är öppen och sist");
-            check(day1b.split("\n").length == 5, "kraschraden räknas inte som tid");
+            check(day1b.split("\n").length == 6, "kraschraden räknas inte som tid");
 
             // 5. stängning vid nu, och idempotent
             t3.close(t0 + 7 * min);

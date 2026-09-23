@@ -35,10 +35,16 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      # Trackern har inga plattforms-imports, så den rena logiken kan provas
-      # utan IDE:ns jar-filar. Själva paketeringen kräver IDE:n och sker lokalt.
+      # Trackern och rapporten har inga plattforms-imports, så den rena logiken
+      # kan provas utan IDE:ns jar-filar. Själva paketeringen kräver IDE:n och
+      # sker lokalt.
       - name: Prov (ren logik, ingen IDE behövs)
+        env:
+          # Rapportens klockslag skrivs i lokal tid och RapportTest jämför mot
+          # fixturen, så zonen måste vara känd. Samma värde i package.json.
+          TZ: Europe/Stockholm
         run: |
           cd jetbrains
-          javac -d build/classes-logic src/codetimestamper/Tracker.java test/codetimestamper/TrackerTest.java
+          javac -d build/classes-logic src/codetimestamper/Tracker.java src/codetimestamper/Rapport.java test/codetimestamper/TrackerTest.java test/codetimestamper/RapportTest.java
           java -cp build/classes-logic codetimestamper.TrackerTest
+          java -cp build/classes-logic codetimestamper.RapportTest

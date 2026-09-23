@@ -2,7 +2,7 @@
 // Läser JSONL-filerna och gör rapport. Delas av extensionen och CLI:t.
 const fs = require('fs');
 const path = require('path');
-const { dataDir, dayKey, splitDays } = require('./tracker');
+const { dataDir, dayKey, TICK_MS } = require('./tracker');
 
 function listDays(dir = dataDir()) {
   let names = [];
@@ -15,6 +15,13 @@ function listDays(dir = dataDir()) {
     .filter((n) => /^\d{4}-\d{2}-\d{2}\.jsonl$/.test(n))
     .map((n) => n.slice(0, 10))
     .sort();
+}
+
+// Lokal midnatt efter en dagnyckel, så ett pulsslag strax före midnatt inte
+// räknas in i nästa dygn.
+function midnightAfter(day) {
+  const d = new Date(day + 'T12:00:00');
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime();
 }
 
 function readDay(day, dir = dataDir()) {
@@ -32,8 +39,23 @@ function readDay(day, dir = dataDir()) {
   } catch {
     return r;
   }
-  const maxEnd = {};
-  const opens = [];
+
+  // En körning identifieras av sin starttid och sin editor. Tiden räknas från
+  // körningens avslut om ett sådant finns, annars från dess sista pulsslag —
+  // aldrig från en gissning, och aldrig kastad bara för att avslutet saknas.
+  // Editorn är med i nyckeln: två editorer som öppnar i samma millisekund ska
+  // inte slås ihop till en körning.
+  const runs = new Map();
+  const run = (start, ide) => {
+    const key = `${start}|${ide}`;
+    let x = runs.get(key);
+    if (!x) {
+      x = { ide, start, end: null, lastBeat: 0 };
+      runs.set(key, x);
+    }
+    return x;
+  };
+
   for (const line of raw.split('\n')) {
     if (!line.trim()) continue;
     let l;
@@ -43,20 +65,36 @@ function readDay(day, dir = dataDir()) {
       r.badLines++;
       continue;
     }
-    if (l.t === 'seg' && l.end > l.start) {
-      const ms = l.end - l.start;
-      r.totalMs += ms;
-      r.byIde[l.ide] = (r.byIde[l.ide] || 0) + ms;
-      r.sessions.push({ ide: l.ide, start: l.start, end: l.end, ms });
-      maxEnd[l.ide] = Math.max(maxEnd[l.ide] || 0, l.end);
-    } else if (l.t === 'open') {
-      opens.push(l);
+    if (l.t === 'open') {
+      run(l.ts, l.ide);
+    } else if (l.t === 'seg' && l.end > l.start) {
+      run(l.start, l.ide).end = l.end;
+    } else if (l.t === 'beat') {
+      const x = run(l.start, l.ide);
+      if (l.ts > x.lastBeat) x.lastBeat = l.ts;
     } else {
       r.badLines++;
     }
   }
-  // En öppnad session utan avslut efter sig = krasch. Räknas inte, redovisas.
-  r.orphans = opens.filter((o) => !(maxEnd[o.ide] > o.ts));
+
+  const dayEnd = midnightAfter(day);
+  for (const x of runs.values()) {
+    const end = x.end !== null
+      ? x.end
+      : x.lastBeat
+        ? Math.min(x.lastBeat + TICK_MS, dayEnd)
+        : null;
+    // Utan både avslut och pulsslag finns ingen uppgift om längden alls. Att
+    // gissa vore värre än att säga att passet inte kunde räknas.
+    if (end === null || end <= x.start) {
+      r.orphans.push({ ide: x.ide, ts: x.start });
+      continue;
+    }
+    const ms = end - x.start;
+    r.totalMs += ms;
+    r.byIde[x.ide] = (r.byIde[x.ide] || 0) + ms;
+    r.sessions.push({ ide: x.ide, start: x.start, end, ms });
+  }
   r.sessions.sort((a, b) => a.start - b.start);
   return r;
 }
@@ -98,7 +136,7 @@ function markdown(days) {
       parts.push('');
     }
     for (const o of r.orphans) {
-      parts.push(`> Avbruten session (${o.ide}) startad ${hm(o.ts)} räknas inte — programmet stängdes oväntat.`);
+      parts.push(`> Kort avbrott (${o.ide}) vid ${hm(o.ts)} — passet blev kortare än ett pulsslag och kunde inte räknas.`);
     }
     if (r.badLines) parts.push(`\n> ${r.badLines} oläsbar rad i loggen ignorerades.`);
     parts.push('');

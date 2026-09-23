@@ -2,7 +2,7 @@
   "name": "codetimestamper",
   "displayName": "CodeTimeStamper",
   "description": "Tidstämplar aktiv kodtid per dag. Inget annat.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "alexwest",
   "license": "MIT",
   "author": {
@@ -62,7 +62,7 @@
     }
   },
   "scripts": {
-    "test": "node test/test.js && node test/extension-harness.js",
+    "test": "TZ=Europe/Stockholm node test/test.js && TZ=Europe/Stockholm node test/extension-harness.js",
     "package": "npx --yes @vscode/vsce package --out codetimestamper.vsix"
   }
 }

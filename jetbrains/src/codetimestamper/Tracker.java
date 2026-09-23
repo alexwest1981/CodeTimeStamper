@@ -27,6 +27,9 @@ public final class Tracker {
 
     public static final long IDLE_MS = 10 * 60 * 1000L;
 
+    /** Hur ofta ett pulsslag skrivs. Samma tal som rapporten räknar med. */
+    public static final long TICK_MS = 30_000L;
+
     private final String ide;
     private final Path dir;
     private long idleMs;
@@ -79,10 +82,22 @@ public final class Tracker {
      * Kallas med jämna mellanrum. Stänger vid senaste aktivitet + tröskeln, inte
      * vid nu — annars räknas de tio minuterna före pausen aldrig, trots att tysta
      * luckor under tröskeln inuti ett segment räknas.
+     *
+     * Är segmentet fortfarande öppet lämnas ett pulsslag: det gör att tiden inte
+     * hänger på att stängningen lyckas. En IDE som dör utan att stängningskroken
+     * körs lämnar ett pulsslag i stället för ingenting, och rapporten räknar
+     * passet fram till dess i stället för att kasta det. Pulsslaget bär sin egen
+     * starttid, så två fönster i samma IDE hålls isär.
      */
     public synchronized void tick(long now) {
-        if (openAt != null && now - lastActivity >= idleMs) {
+        if (openAt == null) {
+            return;
+        }
+        if (now - lastActivity >= idleMs) {
             close(lastActivity + idleMs);
+        } else {
+            append(openAt, "{\"ide\":" + json(ide) + ",\"t\":\"beat\",\"start\":" + openAt
+                    + ",\"ts\":" + now + "}");
         }
     }
 

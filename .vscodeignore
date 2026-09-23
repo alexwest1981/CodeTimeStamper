@@ -2,3 +2,6 @@ test/**
 .github/**
 .gitignore
 **/*.vsix
+# JetBrains-pluginen är en egen artefakt i samma repo. Utan den här raden
+# hamnar dess byggkatalog (och en kopia av zip:en) inuti VSIX:en.
+jetbrains/**

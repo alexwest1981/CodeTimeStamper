@@ -8,7 +8,7 @@ const path = require('path');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'cts-'));
 process.env.CODETIMESTAMPER_DIR = TMP;
 
-const { Tracker, splitDays, dayKey } = require('../tracker');
+const { Tracker, splitDays, dayKey, TICK_MS } = require('../tracker');
 const { readDay, markdown, weekMarkdown } = require('../report');
 
 const MIN = 60000;
@@ -77,19 +77,55 @@ const ok = (name) => console.log(`  ok  ${++n}. ${name}`);
   ok('summering per editor');
 }
 
-// 4. krasch: öppet segment utan avslut räknas inte men redovisas
+// 4. ett pass som dör mitt i räddas till sista pulsslaget
 {
-  const t = new Tracker('KraschIDE', MIN);
+  const t = new Tracker('KraschIDE', 10 * MIN);
+  const t0 = new Date(2026, 8, 19, 14, 0).getTime();
+  t.touch(t0);
+  t.tick(t0 + TICK_MS);       // pulsslag
+  t.tick(t0 + 2 * TICK_MS);   // pulsslag
+  // ... och här dör extension hosten. close() körs aldrig.
+  const r = readDay('2026-09-19');
+  assert.strictEqual(r.totalMs, 3 * TICK_MS, 'passet räddas till sista pulsslaget + ett intervall');
+  assert.strictEqual(r.orphans.length, 0, 'inget avbrott att rapportera');
+  assert.strictEqual(r.sessions.length, 1);
+  assert.ok(!markdown(['2026-09-19']).includes('avbrott'), 'ingen varning i rapporten');
+  ok('kraschat pass efter ett pulsslag räddas i stället för att kastas');
+}
+
+// 5. två fönster i samma editor blandas inte ihop
+{
+  const w1 = new Tracker('Antigravity IDE', 10 * MIN);
+  const w2 = new Tracker('Antigravity IDE', 10 * MIN);
+  const t0 = new Date(2026, 8, 18, 9, 0).getTime();
+  w1.touch(t0);
+  w2.touch(t0 + 45 * 1000);          // andra fönstret, egen starttid
+  w1.tick(t0 + TICK_MS);
+  w2.tick(t0 + 45 * 1000 + TICK_MS);
+  w2.close(t0 + 45 * 1000 + 5 * MIN);
+  // w1 dör utan avslut. Dess pulsslag får inte låna w2:s tid.
+  const r = readDay('2026-09-18');
+  const w1Run = r.sessions.find((s) => s.start === t0);
+  const w2Run = r.sessions.find((s) => s.start === t0 + 45 * 1000);
+  assert.strictEqual(w1Run.ms, 2 * TICK_MS, 'första fönstret får sin egen tid');
+  assert.strictEqual(w2Run.ms, 5 * MIN, 'andra fönstret får sin egen tid');
+  assert.strictEqual(r.sessions.length, 2, 'två skilda pass');
+  ok('två fönster i samma editor hålls isär av starttiden');
+}
+
+// 6. gammal logg utan pulsslag: avslut saknas -> kan inte räknas, men sägs
+{
+  const t = new Tracker('GammalIDE', MIN);
   const t0 = new Date(2026, 8, 20, 14, 0).getTime();
-  t.touch(t0); // ingen close()
+  t.touch(t0); // ingen close(), inga pulsslag (så såg 0.1.x ut)
   const r = readDay('2026-09-20');
   assert.strictEqual(r.totalMs, 0);
   assert.strictEqual(r.orphans.length, 1);
-  assert.ok(markdown(['2026-09-20']).includes('Avbruten session'));
-  ok('kraschat segment räknas inte, syns i rapporten');
+  assert.ok(markdown(['2026-09-20']).includes('Kort avbrott'));
+  ok('logg utan pulsslag räknas fortfarande inte, men rapporteras');
 }
 
-// 5. skräprad och midnatt i rapporten
+// 7. skräprad
 {
   fs.appendFileSync(path.join(TMP, '2026-09-20.jsonl'), 'inte json\n');
   const r = readDay('2026-09-20');
@@ -98,12 +134,23 @@ const ok = (name) => console.log(`  ok  ${++n}. ${name}`);
   ok('oläsbar rad ignoreras');
 }
 
-// 6. veckorapporten räknar ihop dagarna
+// 8. veckorapporten räknar ihop dagarna
 {
   const md = weekMarkdown('2026-09-22');
   assert.ok(md.includes('42 min'), 'veckan innehåller 21:a september');
   assert.ok(md.includes('| Dag | Tid |'));
   ok('veckorapport');
+}
+
+// 9. samma logg ger exakt samma rapport som JetBrains-sidan
+{
+  const fixture = path.join(__dirname, 'fixture');
+  const keep = process.env.CODETIMESTAMPER_DIR;
+  process.env.CODETIMESTAMPER_DIR = fixture;
+  const expected = fs.readFileSync(path.join(fixture, '2026-09-21.md'), 'utf8');
+  assert.strictEqual(markdown(['2026-09-21']).trim(), expected.trim());
+  process.env.CODETIMESTAMPER_DIR = keep;
+  ok('delad fixtur: samma logg ger samma rapport i båda språken');
 }
 
 fs.rmSync(TMP, { recursive: true, force: true });

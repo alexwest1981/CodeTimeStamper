@@ -3,11 +3,10 @@
 const vscode = require('vscode');
 const path = require('path');
 const fs = require('fs');
-const { Tracker, dataDir, dayKey } = require('./tracker');
+const { Tracker, dataDir, dayKey, TICK_MS } = require('./tracker');
 const { markdown, weekMarkdown, readDay, listDays, fmt } = require('./report');
 
 const IDE = vscode.env.appName || 'VS Code';
-const TICK_MS = 30000;
 
 let tracker;
 let status;
@@ -31,6 +30,16 @@ function writeDailyReports() {
     fs.mkdirSync(outDir, { recursive: true });
     fs.writeFileSync(file, markdown([day]));
   }
+}
+
+// Dagens rapport skrivs om när ett pass tar slut, så att markdownfilen på disk
+// är aktuell utan att man behöver öppna rapporten. Samma regel som i
+// JetBrains-pluginen.
+function writeTodayReport() {
+  const outDir = path.join(dataDir(), 'rapport');
+  fs.mkdirSync(outDir, { recursive: true });
+  const today = dayKey(Date.now());
+  fs.writeFileSync(path.join(outDir, `${today}.md`), markdown([today]));
 }
 
 function refreshStatus() {
@@ -87,7 +96,9 @@ function activate(context) {
   timer = setInterval(() => {
     const c = cfg();
     tracker.idleMs = c.idleMs;
+    const wasOpen = tracker.openAt !== null;
     if (c.enabled) tracker.tick();
+    if (wasOpen && tracker.openAt === null) writeTodayReport();
     refreshStatus();
     writeDailyReports();
   }, TICK_MS);
@@ -126,6 +137,7 @@ function deactivate() {
   // Stäng det öppna segmentet vid nu, inte vid senaste aktiviteten: användaren
   // stänger medvetet och var aktiv fram till dess.
   if (tracker) tracker.close();
+  writeTodayReport();
 }
 
 module.exports = { activate, deactivate };

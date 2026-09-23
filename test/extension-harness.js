@@ -131,14 +131,19 @@ const ok = (name) => console.log(`  ok  ${++n}. ${name}`);
   const today = fs.readFileSync(path.join(TMP, '2026-09-23.jsonl'), 'utf8').trim().split('\n');
   assert.strictEqual(today.length, 1, 'bara en öppningsrad ännu');
   assert.strictEqual(JSON.parse(today[0]).t, 'open');
+  const openTs = JSON.parse(today[0]).ts;
   ok('tangent och skroll öppnar ett segment');
 
-  // nio minuters tystnad -> inget avbrott
+  // nio minuters tystnad -> inget avbrott, men ett pulsslag lämnas så att ett
+  // pass som dör utan att stängas kan räddas i efterhand
   clock += 9 * 60000;
   tick();
-  assert.strictEqual(today.length, 1);
-  assert.strictEqual(fs.readFileSync(path.join(TMP, '2026-09-23.jsonl'), 'utf8').trim().split('\n').length, 1);
-  ok('nio tysta minuter avbryter inte');
+  const beat = JSON.parse(
+    fs.readFileSync(path.join(TMP, '2026-09-23.jsonl'), 'utf8').trim().split('\n').pop()
+  );
+  assert.strictEqual(beat.t, 'beat', 'pulsslag skrivet');
+  assert.strictEqual(beat.start, openTs, 'pulsslaget bär segmentets starttid');
+  ok('nio tysta minuter avbryter inte, och lämnar ett pulsslag');
 
   // över tröskeln -> segmentet stängs vid senaste aktivitet + tröskeln
   clock += 2 * 60000;
@@ -159,12 +164,12 @@ const ok = (name) => console.log(`  ok  ${++n}. ${name}`);
   assert.ok(statusBars[0].text.includes('pausad'), statusBars[0].text);
   ok('statusraden visar dagens tid och pausläget');
 
-  // ny aktivitet startar ett nytt segment direkt
+  // ny aktivitet startar ett nytt segment direkt (open, pulsslag, seg, open)
   clock += 5 * 60000;
   fire('selection');
   assert.strictEqual(
     fs.readFileSync(path.join(TMP, '2026-09-23.jsonl'), 'utf8').trim().split('\n').length,
-    3
+    4
   );
   ok('aktiviteten startar ett nytt segment efter pausen');
 

@@ -51,11 +51,26 @@ Then restart the editor. The timer activates on startup, and a clock in the
 status bar shows today's total — click it for the report.
 
 **JetBrains IDEs** — download `codetimestamper-jetbrains.zip` from the same
-release and use *Settings → Plugins → ⚙ → Install Plugin from Disk…*, then
-restart. **No build step** — the ZIP is self-contained. Declares IntelliJ
+release, then *Settings → Plugins → ⚙ → Install Plugin from Disk…*, pick the ZIP
+and restart. **No build step** — the ZIP is self-contained. Declares IntelliJ
 Platform 243 (2024.3) as its floor, measured on IntelliJ IDEA 2026.2.2. For the
 build itself (contributors only) see
 [`jetbrains/README.md`](jetbrains/README.md).
+
+Nothing needs switching on in either half. In a JetBrains IDE the counter sits
+in the status bar at the bottom (`Kodtid 2 h 15 min`), updates every 30 seconds
+and opens today's report when clicked. If you prefer the file dialog's
+equivalent — unzipping by hand — there is **no single path to paste**: on Linux
+a plugin goes in `~/.local/share/JetBrains/<Product><Version>/`, on macOS and
+Windows in `<config>/plugins/`, and `<Product><Version>` differs per IDE and
+version. Your own IDE states the value it uses at startup:
+
+```bash
+grep -oP 'idea\.plugins\.path=\K.*' ~/.cache/JetBrains/*/log/idea.log | tail -1
+```
+
+The *Install Plugin from Disk…* dialog writes to exactly that directory for you,
+which is why it is the recommended route.
 
 ## What it measures
 
@@ -112,8 +127,11 @@ Scrolling is deliberate: without it, ten minutes of reading code would look like
 idle time. Signals from an unfocused window are ignored, so an agent or formatter
 writing files in the background cannot keep the timer alive all night.
 
-A session that never closed (the editor crashed) is not counted; it is listed in
-the report as interrupted instead.
+A session that never closed (the editor was killed) is counted up to its last
+heartbeat: every 30 seconds while a session is open, a `beat` line records that
+it was still alive. A crash therefore loses at most half a minute instead of the
+whole session. A session killed within 30 seconds of its first keystroke has no
+heartbeat yet — it is listed in the report as interrupted and not counted.
 
 *Known ceiling:* a nine-minute silence is credited, so a day of many short
 sessions over-reports by up to ten minutes per session. That is the definition of
@@ -163,16 +181,31 @@ Swedish, the author's language. Say so in an issue if you want English.
 Two layers, both plain `node` and `assert`, no test framework:
 
 ```bash
-node test/test.js               # 6 — the pure timer/report logic
+node test/test.js               # 9 — the pure timer/report logic + the shared fixture
 node test/extension-harness.js  # 12 — extension.js against a stubbed host API
 ```
 
-`npm test` runs both. CI runs them on Node 20 and 22 and packages the `.vsix`.
+`npm test` runs both (21 checks). CI runs them on Node 20 and 22 and packages
+the `.vsix`.
+
+The JetBrains half has its own suite, run by its build script:
+
+```bash
+cd jetbrains && ./build.sh      # 19 tracker checks + 12 report checks
+```
+
+Its report generator is a second implementation of the same format, so
+`test/fixture/` holds one log and one expected report and **both** languages
+assert against it. Without that shared fixture the two halves could drift and
+the daily total would mean different things depending on which editor you read
+it in.
 
 Activation in a real editor is measured too, not assumed: launching VS Code
 against a temporary profile logs
 `ExtensionService#_doActivateExtension … activationEvent: 'onStartupFinished'`,
-and the run's output file is checked. "It packaged" and "it is installed" are not
-evidence that it ran.
+and the run's output file is checked. For JetBrains, `jetbrains/verify.sh`
+starts a sandboxed IDE and prints the log line its status bar widget writes when
+the platform mounts it. "It packaged" and "it is installed" are not evidence
+that it ran.
 
 MIT licensed.

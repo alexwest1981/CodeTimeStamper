@@ -13,13 +13,20 @@
     Samma fil som CodeTimeStamper för VS Code-familjen, så dagssumman blir totalen
     över alla editorer, uppdelad per editor.
     <br/><br/>
-    Dagsrapport som markdown skrivs automatiskt. <code>idleMinutes</code> och
+    Räknaren står i statusraden längst ner ("Kodtid 1 h 20 min") och uppdateras
+    var 30:e sekund; klick öppnar dagens rapport. Ingen inställning behöver slås
+    på — den dyker upp av sig själv i varje fönster.
+    <br/><br/>
+    Dagsrapport som markdown skrivs automatiskt till
+    <code>~/.codetimestamper/rapport/</code>, samma fil och samma format som
+    VS Code-varianten skriver. <code>idleMinutes</code> och
     <code>enabled</code> ändras i <code>codetimestamper.xml</code> i IDE:ns
-    konfigurationsmapp.
+    konfigurationsmapp (där finns ingen inställningssida).
   ]]></description>
   <depends>com.intellij.modules.platform</depends>
   <extensions defaultExtensionNs="com.intellij">
     <applicationService serviceImplementation="codetimestamper.Settings"/>
     <applicationInitializedListener implementation="codetimestamper.Stamper"/>
+    <statusBarWidgetFactory id="CodeTimeStamper" implementation="codetimestamper.Statusbar"/>
   </extensions>
 </idea-plugin>
