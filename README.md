@@ -14,8 +14,9 @@ nine-minute silence counts, the tenth ends the session.
 ## Install
 
 Works in VS Code, **Antigravity**, Cursor, Windsurf and VSCodium — one
-extension, same API. (IntelliJ and other JetBrains IDEs need a separate plugin;
-not written yet.)
+extension, same API. IntelliJ and other JetBrains IDEs have their own plugin in
+this repo ([`jetbrains/`](jetbrains/)), which writes the same log so the totals
+merge.
 
 Requires VS Code **1.80 or newer**, or a fork based on it. Nothing else: no
 Node, no compiler, no build step — the extension is plain JavaScript with zero
@@ -48,6 +49,12 @@ npm run package         # -> codetimestamper.vsix
 
 Then restart the editor. The timer activates on startup, and a clock in the
 status bar shows today's total — click it for the report.
+
+**JetBrains IDEs** — download `codetimestamper-jetbrains.zip` from the same
+release and use *Settings → Plugins → ⚙ → Install Plugin from Disk…*, then
+restart. Built and verified on IntelliJ IDEA 2026.2.2; see
+[`jetbrains/README.md`](jetbrains/README.md) for the build (no Gradle, no SDK
+download — the installed IDE is the SDK).
 
 ## What it measures
 

@@ -26,3 +26,19 @@ jobs:
         with:
           name: codetimestamper-vsix
           path: codetimestamper.vsix
+
+  jetbrains-logic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      # Trackern har inga plattforms-imports, så den rena logiken kan provas
+      # utan IDE:ns jar-filar. Själva paketeringen kräver IDE:n och sker lokalt.
+      - name: Prov (ren logik, ingen IDE behövs)
+        run: |
+          cd jetbrains
+          javac -d build/classes-logic src/codetimestamper/Tracker.java test/codetimestamper/TrackerTest.java
+          java -cp build/classes-logic codetimestamper.TrackerTest
